@@ -8,6 +8,7 @@ const {
   getDeviceId,
   deleteAuthorization,
 } = require('../influxdb/authorizations')
+const dynamicRouter = require('../dynamic')
 const router = express.Router()
 function handleError(wrapped) {
   return async function (req, res, next) {
@@ -140,6 +141,8 @@ router.get(
     })
   })
 )
+
+router.use('/dynamic', dynamicRouter)
 
 // all other routes are not supported!
 router.all('*', (_, res) => {
