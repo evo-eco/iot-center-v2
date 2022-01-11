@@ -1,31 +1,44 @@
-import {Button, Card, Select, Tooltip} from 'antd'
-import {Line, Gauge, GaugeOptions, LineOptions} from '@antv/g2plot'
-import React, {FunctionComponent, useEffect, useState} from 'react'
-import PageContent, {Message} from './PageContent'
-import {useRef} from 'react'
-import {useCallback} from 'react'
-import {
-  DiagramEntryPoint,
-  G2Plot,
-  G2PlotUpdater,
-  TimePoint,
-  useMap,
-  useWebSocket,
-  useRelatimeSVG,
-  SvgFactory,
-  getDiagramEntyPointLatestValues,
-} from '../util/realtime'
-import {VIRTUAL_DEVICE} from '../App'
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import {RouteComponentProps} from 'react-router-dom'
-import {DeviceInfo} from './DevicesPage'
-import {IconRefresh, IconSettings} from '../styles/icons'
+import PageContent, {Message} from './PageContent'
+import {
+  Button,
+  Card,
+  Select,
+  Tooltip,
+  Row,
+  Col,
+  Collapse,
+  Empty,
+  Divider,
+} from 'antd'
+import {Line, Gauge, GaugeOptions, LineOptions} from '@antv/g2plot'
+import {InfoCircleFilled} from '@ant-design/icons'
+import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
+import {IconRefresh, IconSettings, colorLink, colorPrimary} from '../styles'
 import {Table as GiraffeTable} from '@influxdata/giraffe'
 import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
-import {Row, Col, Collapse, Empty, Divider} from 'antd'
-import {InfoCircleFilled} from '@ant-design/icons'
-import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
-import {colorLink, colorPrimary} from '../styles/colors'
+import {
+  DiagramEntryPoint,
+  DataManager,
+  ManagedG2Plot,
+  ManagedMap,
+  ManagedSvg,
+} from '../util/realtime'
+import {
+  DataManagerContextProvider,
+  useWebSocket,
+  ManagedComponentReact,
+} from '../util/realtime/react'
+import {DeviceInfo} from './DevicesPage'
+import {VIRTUAL_DEVICE} from '../App'
 
 /*
  ********************************************
@@ -139,6 +152,8 @@ const gaugesPlotOptions: Record<
     ([measurement, {max, min, unit, decimalPlaces}]) => [
       measurement,
       {
+        min,
+        max,
         range: {
           ticks: [0, 1],
           color: `l(0) 0:${colorPrimary} 1:${colorLink}`,
@@ -217,16 +232,6 @@ const linePlotOptions: Record<
   ])
 )
 
-/** Returns list of keys present in data. */
-const getFieldsOfData = (data: DiagramEntryPoint[]) => {
-  const keysObj: Record<string, true> = {}
-  for (let i = data.length; i--; ) {
-    const entry = data[i]
-    keysObj[entry.key] = true
-  }
-  return Object.getOwnPropertyNames(keysObj)
-}
-
 // #region Realtime
 
 /** Data returned from websocket in line-protocol-like shape */
@@ -243,11 +248,11 @@ type RealtimeSubscription = {
   tags: string[]
 }
 
-const host =
+const HOST =
   process.env.NODE_ENV === `development`
     ? window.location.hostname + ':5000'
     : window.location.host
-const wsAddress = `ws://${host}/mqtt`
+const WS_URL = `ws://${HOST}/mqtt`
 
 /** length of unix time with milliseconds precision */
 const MILLIS_TIME_LENGTH = 13
@@ -255,7 +260,7 @@ const MILLIS_TIME_LENGTH = 13
 const pointTimeToMillis = (p: RealtimePoint): RealtimePoint => ({
   ...p,
   timestamp: p.timestamp
-    .substr(0, MILLIS_TIME_LENGTH)
+    .substring(0, MILLIS_TIME_LENGTH)
     .padEnd(MILLIS_TIME_LENGTH, '0'),
 })
 
@@ -277,7 +282,7 @@ const useRealtimeData = (
     },
     [subscriptions, onReceivePoints]
   )
-  useWebSocket(wsInit, wsAddress, !!subscriptions.length)
+  useWebSocket(wsInit, WS_URL, !!subscriptions.length)
 }
 
 // transformations for both InfluxDB and Realtime sources so we can use them same way independently of the source
@@ -327,7 +332,7 @@ const giraffeTableToDiagramEntryPoints = (
   {
     let length = data.length
     for (let i = data.length; i--; ) {
-      if (data[i].value === null || data[i].time === null) {
+      if (data[i].value == null || data[i].time == null) {
         length--
         data[i] = data[length]
       }
@@ -337,43 +342,6 @@ const giraffeTableToDiagramEntryPoints = (
   }
 
   return data
-}
-
-/**
- * Extracts latlon pairs and return them as TimePoint for realtime-map
- */
-const diagramEntryPointsToMapTimePoints = (
-  data: DiagramEntryPoint[]
-): TimePoint[] => {
-  const lats = data.filter((x) => x.key === 'Lat')
-  const lons = data.filter((x) => x.key === 'Lon')
-  const pointHashMap: Map<number, TimePoint> = new Map()
-  const points: TimePoint[] = new Array(lats.length)
-
-  for (let i = lats.length; i--; ) {
-    const {time, value} = lats[i]
-    const point: TimePoint = [value, undefined as any, time]
-    pointHashMap.set(time, point)
-    points[i] = point
-  }
-
-  for (let i = lons.length; i--; ) {
-    const {time, value} = lons[i]
-    const entry = pointHashMap.get(time)
-    if (entry) entry[1] = value
-  }
-
-  let length = points.length
-  for (let i = length; i--; ) {
-    if (points[i][1] === undefined) {
-      length--
-      points[i] = points[length]
-    }
-  }
-  points.length = length
-  points.sort((a, b) => a[2] - b[2])
-
-  return points
 }
 
 // #endregion Realtime
@@ -406,6 +374,9 @@ const timeOptions: {label: string; value: string}[] = [
   {label: 'Past 30d', value: '-30d'},
 ]
 
+const getIsRealtime = (timeStart: string) =>
+  timeOptionsRealtime.some((x) => x.value === timeStart)
+
 interface PropsRoute {
   deviceId?: string
 }
@@ -427,35 +398,18 @@ const RealTimePage: FunctionComponent<
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
 
+  const manager = useRef(new DataManager()).current
+
   // resetXDomain removed, doesn't make sense to zoom plot in realtime
 
   const isVirtualDevice = deviceId === VIRTUAL_DEVICE
   const measurementsTable = deviceData?.measurementsTable
 
   // unlike before, data don't have to be in react state.
-  // we have to create some way to track what data we have
-  // received so we can hide plots without data
-  const [receivedDataFields, setReceivedDataFields] = useState<string[]>([])
-  const noDataFields = fields.filter(
-    (x) => !receivedDataFields.some((y) => y === x)
-  )
-  const updateReceivedDataFields = (updatedFields: string[]) => {
-    setReceivedDataFields((prevState) => {
-      const newFields = updatedFields.filter(
-        (x) => !prevState.some((y) => x === y)
-      )
-      if (!newFields.length) return prevState
-      return [...prevState, ...newFields]
-    })
-  }
-  const clearReceivedDataFields = () =>
-    setReceivedDataFields((prevState) => (prevState.length ? [] : prevState))
-  const hasData = (column: string) =>
-    receivedDataFields.some((x) => x === column)
 
   // #region realtime
 
-  const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
+  const isRealtime = getIsRealtime(timeStart)
 
   // Default time selected to Past when mqtt not configured
   useEffect(() => {
@@ -464,27 +418,18 @@ const RealTimePage: FunctionComponent<
     }
   }, [mqttEnabled])
 
-  // We use hook instead of component so we can bypass react and have full control of rendering plots
-  const {mapElement, mapRef} = useMap()
-  // Map view automatically follows last point when realtime so drag is not necessary
-  mapRef.current.setDragable(!isRealtime)
-
-  const {svgElement, svgUpdate, svgClear} = useRelatimeSVG(SvgFactory)
-  useEffect(() => svgUpdate({deviceId}), [deviceId, svgUpdate])
-
   const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
-  // updaters are functions that updates plots outside of react state
-  type Updaters = Record<string, G2PlotUpdater>
-  const updatersGaugeRef = useRef<Updaters>({})
-  const updatersLineRef = useRef<Updaters>({})
 
   /** plot is showed with fixed time range if set */
-  const retentionTime = isRealtime
+  const retentionTimeMs = isRealtime
     ? timeOptionsRealtime[
         timeOptionsRealtime.findIndex((x) => x.value === timeStart)
       ].realtimeRetention
     : Infinity
-  mapRef.current.retentionTime = retentionTime
+
+  useEffect(() => {
+    manager.retentionTimeMs = retentionTimeMs
+  }, [retentionTimeMs, manager])
 
   useEffect(() => {
     setSubscriptions(
@@ -494,34 +439,14 @@ const RealTimePage: FunctionComponent<
     )
   }, [deviceId, isRealtime])
 
-  /** Push data to desired plots and rerender them */
-  const updateData = useRef((data: DiagramEntryPoint[]) => {
-    updateReceivedDataFields(getFieldsOfData(data))
+  /** Push data to manager */
+  const updateData = useRef((points: DiagramEntryPoint[] | undefined) => {
+    if (points?.length) manager.updateData(points)
+  }).current
 
-    mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
-
-    const latest = getDiagramEntyPointLatestValues(data)
-    const formatedLatest = latest.map((x) => {
-      let decimalPlaces = measurementsDefinitions[x.key]?.decimalPlaces ?? 0
-      if (x.key === 'Lat' || x.key === 'Lon') decimalPlaces = 5
-
-      return {...x, value: `${x.value.toFixed(decimalPlaces ?? 0)}`}
-    })
-    svgUpdate(formatedLatest)
-
-    for (const field of fields) {
-      const lineData = data.filter(({key}) => key === field)
-
-      const {min, max} = measurementsDefinitions[field]
-      const gaugeData = lineData.map((x) => ({
-        ...x,
-        // plot library uses data for gauges in [0,1] interval
-        value: (x.value - min) / (max - min),
-      }))
-
-      updatersLineRef.current[field]?.(lineData)
-      updatersGaugeRef.current[field]?.(gaugeData)
-    }
+  /** Clear data in manager */
+  const clearData = useRef(() => {
+    manager.updateData(undefined)
   }).current
 
   useRealtimeData(
@@ -531,18 +456,6 @@ const RealTimePage: FunctionComponent<
     }).current
   )
 
-  /** Clear data and resets received data fields state */
-  const clearData = useCallback(() => {
-    clearReceivedDataFields()
-    for (const measurement of fields) {
-      updatersGaugeRef.current[measurement]?.(undefined)
-      updatersLineRef.current[measurement]?.(undefined)
-      mapRef.current.clear()
-      svgClear()
-      svgUpdate({deviceId})
-    }
-  }, [mapRef, svgClear, svgUpdate, deviceId])
-
   useEffect(() => {
     if (isRealtime) clearData()
   }, [isRealtime, clearData])
@@ -550,7 +463,6 @@ const RealTimePage: FunctionComponent<
 
   // On measurementsTable is changed, we render it in plots
   useEffect(() => {
-    clearData()
     updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fieldsAll))
   }, [measurementsTable, updateData, clearData])
 
@@ -563,6 +475,7 @@ const RealTimePage: FunctionComponent<
 
     const fetchData = async () => {
       setLoading(true)
+      clearData()
       try {
         const config = await fetchDeviceConfig(deviceId)
         const deviceData: DeviceData = {config}
@@ -584,7 +497,7 @@ const RealTimePage: FunctionComponent<
 
     // fetch data only if not in realtime mode
     if (!isRealtime) fetchData()
-  }, [dataStamp, deviceId, timeStart, isRealtime])
+  }, [dataStamp, deviceId, timeStart, isRealtime, clearData])
 
   useEffect(() => {
     const fetchDevices = async () => {
@@ -615,12 +528,10 @@ const RealTimePage: FunctionComponent<
     All plots has to be rendered whole time because we need to have updater function from it. (so we use display 'none' instead of conditional rendering)
   */
   const renderGauge = (column: string) => (
-    <G2Plot
-      type={Gauge}
-      onUpdaterChange={(updater) =>
-        (updatersGaugeRef.current[column] = updater)
-      }
-      options={gaugesPlotOptions[column]}
+    <ManagedComponentReact
+      component={ManagedG2Plot}
+      keys={column}
+      props={{ctor: Gauge, options: gaugesPlotOptions[column]}}
     />
   )
 
@@ -634,7 +545,6 @@ const RealTimePage: FunctionComponent<
             sm={helpCollapsed ? 24 : 24}
             md={helpCollapsed ? 12 : 24}
             xl={helpCollapsed ? 6 : 12}
-            style={hasData(column) ? {} : {display: 'none'}}
             key={i}
           >
             <Card title={column}>{renderGauge(column)}</Card>
@@ -645,11 +555,7 @@ const RealTimePage: FunctionComponent<
   )
 
   const plotDivider = (
-    <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right">
-      {noDataFields.length
-        ? `No data for: ${noDataFields.join(', ')}`
-        : undefined}
-    </Divider>
+    <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right"></Divider>
   )
 
   const geo = (
@@ -657,19 +563,21 @@ const RealTimePage: FunctionComponent<
       style={{
         height: '500px',
         minWidth: '200px',
-        ...(hasData('Lat') ? {} : {display: 'none'}),
       }}
     >
-      {mapElement}
+      <ManagedComponentReact
+        component={ManagedMap}
+        keys={['Lat', 'Lon']}
+        props={{}}
+      />
     </div>
   )
 
   const renderPlot = (column: string) => (
-    <G2Plot
-      type={Line}
-      onUpdaterChange={(updater) => (updatersLineRef.current[column] = updater)}
-      options={linePlotOptions[column]}
-      retentionTimeMs={retentionTime}
+    <ManagedComponentReact
+      component={ManagedG2Plot}
+      keys={column}
+      props={{ctor: Line, options: linePlotOptions[column]}}
     />
   )
 
@@ -678,11 +586,7 @@ const RealTimePage: FunctionComponent<
       <>
         <Row gutter={[0, 24]}>
           {fields.map((field, i) => (
-            <Col
-              xs={24}
-              style={hasData(field) ? {} : {display: 'none'}}
-              key={i}
-            >
+            <Col xs={24} key={i}>
               <Collapse defaultActiveKey={[i]}>
                 <CollapsePanel key={i} header={field}>
                   {renderPlot(field)}
@@ -691,20 +595,35 @@ const RealTimePage: FunctionComponent<
             </Col>
           ))}
         </Row>
-        {noDataFields.length ? (
-          <Collapse>
-            {noDataFields.map((field, i) => (
-              <CollapsePanel
-                collapsible="disabled"
-                header={`${field} - No data`}
-                key={i}
-              />
-            ))}
-          </Collapse>
-        ) : undefined}
       </>
     )
   })()
+
+  const [svgString, setSvgString] = useState('')
+
+  useEffect(() => {
+    const fetchSvgString = async () => {
+      try {
+        const response = await fetch('/IoT_Center_Diagram_v2.svg')
+        const svgString = await response.text()
+        setSvgString(svgString)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    fetchSvgString()
+  }, [])
+
+  const svg = (
+    <Card style={{marginBottom: 24}}>
+      <ManagedComponentReact
+        component={ManagedSvg}
+        keys={fieldsAll}
+        props={{svgString}}
+      ></ManagedComponentReact>
+    </Card>
+  )
 
   const pageControls = (
     <>
@@ -800,18 +719,21 @@ const RealTimePage: FunctionComponent<
       spin={loading}
       forceShowScroll={true}
     >
-      <Card style={{marginBottom: 24}}>{svgElement}</Card>
-      <div style={receivedDataFields.length ? {} : {display: 'none'}}>
-        {gauges}
-        {plotDivider}
-        {geo}
-        {plots}
-      </div>
-      {!receivedDataFields.length ? (
-        <Card>
-          <Empty />
-        </Card>
-      ) : undefined}
+      <DataManagerContextProvider value={manager}>
+        {true ? (
+          <>
+            {svg}
+            {gauges}
+            {plotDivider}
+            {geo}
+            {plots}
+          </>
+        ) : (
+          <Card>
+            <Empty />
+          </Card>
+        )}
+      </DataManagerContextProvider>
     </PageContent>
   )
 }

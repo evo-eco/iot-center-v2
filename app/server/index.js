@@ -1,6 +1,7 @@
 /* eslint-disable no-process-exit */
 const express = require('express')
 const path = require('path')
+const fs = require('fs/promises')
 const proxy = require('express-http-proxy')
 
 const apis = require('./apis')
@@ -11,9 +12,23 @@ const {logEnvironment, INFLUX_URL} = require('./env')
 const {monitorResponseTime, startProcessMonitoring} = require('./monitor')
 const {addWebSockets} = require('./ws')
 
+const UI_BUILD_DIR = path.join(__dirname, '..', 'ui', 'build')
+
 // terminate on DTRL+C or CTRL+D
 process.on('SIGINT', () => process.exit())
 process.on('SIGTERM', () => process.exit())
+
+/**
+ * @param {string} path
+ */
+async function exists(path) {
+  try {
+    await fs.access(path)
+    return true
+  } catch (e) {
+    return false
+  }
+}
 
 async function startApplication() {
   const app = express()
@@ -36,12 +51,16 @@ async function startApplication() {
   console.log(`Enable proxy from /influx/* to ${INFLUX_URL}/*`)
 
   // UI
-  const uiBuildDir = path.join(__dirname, '../ui/build')
-  app.use(express.static(uiBuildDir))
-  // assume UI client navigation
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(uiBuildDir, 'index.html'))
-  })
+  if (await exists(UI_BUILD_DIR)) {
+    app.use(express.static(UI_BUILD_DIR))
+    const indexFile = await fs.readFile(path.join(UI_BUILD_DIR, 'index.html'))
+    // assume UI client navigation
+    app.get('*', (_req, res) => {
+      res.status(200)
+      res.setHeader('Content-Type', 'text/html')
+      res.end(indexFile)
+    })
+  }
 
   // onboard a new InfluxDB instance
   await onboardInfluxDB()
