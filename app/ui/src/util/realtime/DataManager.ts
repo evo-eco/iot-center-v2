@@ -1,7 +1,7 @@
 import {
-  DiagramEntryPoint,
   MinAndMax,
   pushBigArray,
+  DiagramEntryPoint,
   simplifyDiagramEntryPointToMaxPoints,
 } from '.'
 
@@ -180,6 +180,9 @@ export class DataManager {
   private _retentionTimeMs = Infinity
   private _retentionTimeMsLastUpdated = 0
 
+  // remove after changed keys implemented
+  private _allKeys: Record<string, true> = {}
+
   // todo: use this for no data at react state
   get availebleFields(): string[] {
     throw new Error('not implemented')
@@ -202,8 +205,8 @@ export class DataManager {
     this._onChangeCallbacks.forEach((callback) =>
       // todo: optimize by checking what realy changed
       callback({
-        changedKeys: Object.keys(this._data),
-        lastValueChangedKeys: Object.keys(this._data),
+        changedKeys: Object.keys(this._allKeys),
+        lastValueChangedKeys: Object.keys(this._allKeys),
         retentionChanged: true,
         target: this,
         timeWindowChanged: true,
@@ -267,6 +270,7 @@ export class DataManager {
       const newLines = DiagramEntryPointsToTimeValueLines(newData)
       pushTimeValueLines(this._data, newLines)
       this._clearSimplifiedCacheForKeys(Object.keys(newLines))
+      Object.keys(newLines).forEach((x) => (this._allKeys[x] = true))
     }
 
     this.applyRetentionOnData()

@@ -1,6 +1,5 @@
 import {Gauge, Line, Plot} from '@antv/g2plot'
-import {DataManagerOnChangeEvent, linearScale, MASK_TIME} from '..'
-import {throwReturn} from '../..'
+import {DataManagerOnChangeEvent, linearScale, MASK_TIME, throwReturn} from '..'
 import {ManagedComponent} from '../ManagedComponent'
 
 export type PlotConstructor = new (...args: any[]) => Plot<any>
