@@ -1,5 +1,8 @@
 import React, {useEffect} from 'react'
 import ReactGridLayout, {WidthProvider} from 'react-grid-layout'
+
+import 'react-grid-layout/css/styles.css'
+
 const GridWithProvider = WidthProvider(ReactGridLayout)
 
 /* quickfix for grid initial render issue of react-grid-layout */

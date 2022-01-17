@@ -130,11 +130,11 @@ router.post('/upload/:name', (req, res) => {
   if (name && (name.endsWith('.svg') || name.endsWith('.json'))) {
     fs.writeFile(path.join(DIR_DYNAMIC_DASHBOARDS, name), req.body, {}, (e) => {
       if (e) console.error(e)
-      res.status(!e ? 200 : 500)
+      res.status(!e ? 200 : 500).send('')
     })
   } else {
-    res.text('invalid filename or extension')
     res.status(400)
+    res.text('invalid filename or extension')
   }
 })
 

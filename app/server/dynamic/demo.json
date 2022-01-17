@@ -33,7 +33,7 @@
       "decimalPlaces": 1,
       "layout": {
         "x": 0,
-        "y": 0,
+        "y": 5,
         "w": 4,
         "h": 2
       }
@@ -51,7 +51,7 @@
       "decimalPlaces": 2,
       "layout": {
         "x": 4,
-        "y": 0,
+        "y": 5,
         "w": 4,
         "h": 2
       }
@@ -69,7 +69,7 @@
       "decimalPlaces": 2,
       "layout": {
         "x": 8,
-        "y": 0,
+        "y": 5,
         "w": 4,
         "h": 2
       }
@@ -87,7 +87,7 @@
       "decimalPlaces": 2,
       "layout": {
         "x": 0,
-        "y": 2,
+        "y": 7,
         "w": 6,
         "h": 3
       }
@@ -105,7 +105,7 @@
       "decimalPlaces": 2,
       "layout": {
         "x": 6,
-        "y": 2,
+        "y": 7,
         "w": 6,
         "h": 3
       }
@@ -118,7 +118,7 @@
       "Past": {},
       "layout": {
         "x": 0,
-        "y": 3,
+        "y": 10,
         "w": 12,
         "h": 3
       }
@@ -127,13 +127,27 @@
       "type": "plot",
       "plotType": "line",
       "field": [
-        "Temperature",
-        "CO2"
+        "CO2",
+        "TVOC"
+      ],
+      "label": "CO2 and TVOC",
+      "layout": {
+        "x": 0,
+        "y": 13,
+        "w": 12,
+        "h": 3
+      }
+    },
+    {
+      "type": "plot",
+      "plotType": "line",
+      "field": [
+        "Temperature"
       ],
       "label": "Temperature",
       "layout": {
         "x": 0,
-        "y": 6,
+        "y": 16,
         "w": 12,
         "h": 3
       }
@@ -145,7 +159,7 @@
       "label": "Humidity",
       "layout": {
         "x": 0,
-        "y": 9,
+        "y": 19,
         "w": 12,
         "h": 3
       }
@@ -157,7 +171,7 @@
       "label": "Pressure",
       "layout": {
         "x": 0,
-        "y": 12,
+        "y": 22,
         "w": 12,
         "h": 3
       }
@@ -169,7 +183,7 @@
       "label": "CO2",
       "layout": {
         "x": 0,
-        "y": 15,
+        "y": 25,
         "w": 12,
         "h": 3
       }
@@ -181,7 +195,7 @@
       "label": "TVOC",
       "layout": {
         "x": 0,
-        "y": 18,
+        "y": 28,
         "w": 12,
         "h": 3
       }

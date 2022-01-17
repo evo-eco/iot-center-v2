@@ -537,6 +537,7 @@ const useSource = (
 type DashboardLayoutProps = {
   layoutDefinition: DashboardLayoutDefiniton
   svgStrings?: Record<string, string>
+  onLayoutChanged?: (l: DashboardLayoutDefiniton | undefined) => void
 }
 
 /**
@@ -545,6 +546,7 @@ type DashboardLayoutProps = {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   layoutDefinition,
   svgStrings = {},
+  onLayoutChanged = () => undefined,
 }) => {
   const {cells} = layoutDefinition
 
@@ -552,8 +554,30 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <ReactGridLayoutFixed
       cols={12}
       rowHeight={80}
-      isResizable={false}
-      isDraggable={false}
+      onLayoutChange={(e) => {
+        console.log(e)
+        const layoutCopy = {...layoutDefinition}
+        let changed = false
+        layoutCopy.cells = cells.map((cell, i) => ({
+          ...cell,
+          layout: (() => {
+            const {x, y, w, h} = e[i]
+            const newLayout = {x, y, w, h}
+            if (
+              cell.layout.x !== x ||
+              cell.layout.y !== y ||
+              cell.layout.w !== w ||
+              cell.layout.h !== h
+            ) {
+              changed = true
+            }
+
+            return newLayout
+          })(),
+        }))
+        if (changed) onLayoutChanged(layoutCopy)
+        else onLayoutChanged(undefined)
+      }}
     >
       {cells.map((cell, i) => (
         <div key={JSON.stringify({cell, i})} data-grid={cell.layout}>
@@ -659,24 +683,7 @@ const useLoading = () => {
 
 const dashboardSelectCreateNewOption = 'create new'
 
-const DynamicDashboardPage: FunctionComponent<
-  RouteComponentProps<PropsRoute> & Props
-> = ({match, history, mqttEnabled}) => {
-  const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
-  const [message, setMessage] = useState<Message | undefined>()
-  const [dataStamp, setDataStamp] = useState(0)
-  const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
-  const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
-  const {loading, callWithLoading} = useLoading()
-
-  // Layout selection
-  const [layoutKeys, setLayoutKeys] = useState<string[]>([])
-  const [layoutKey, setLayoutKey] = useState<string>()
-  const [laoutDefinitions, setLayoutDefinitions] = useState<
-    Record<string, DashboardLayoutDefiniton>
-  >({})
-  const layoutDefinition = laoutDefinitions[layoutKey || '']
-
+const CreateNewDashboardPage: FunctionComponent = () => {
   const [helpText, setHelpText] = useState('')
   useEffect(() => {
     // load markdown from file
@@ -696,8 +703,61 @@ const DynamicDashboardPage: FunctionComponent<
       }
     }
 
-    callWithLoading(fetchMarkdown)
-  }, [callWithLoading])
+    fetchMarkdown()
+  }, [])
+
+  return (
+    <Card
+      title="How to create new dynamic dashboard"
+      extra={
+        <Upload
+          accept=".json,.svg"
+          multiple={true}
+          beforeUpload={(file) => {
+            const reader = new FileReader()
+            reader.onload = (e) => {
+              const text = (e?.target?.result as string | undefined) ?? ''
+              fetch(`/api/dynamic/upload/${file.name}`, {
+                body: text,
+                method: 'POST',
+              })
+            }
+            reader.readAsText(file)
+
+            return false
+          }}
+        >
+          <Button icon={<UploadOutlined />}>Upload</Button>
+        </Upload>
+      }
+    >
+      <Markdown source={helpText} />
+    </Card>
+  )
+}
+
+const DynamicDashboardPage: FunctionComponent<
+  RouteComponentProps<PropsRoute> & Props
+> = ({match, history, mqttEnabled}) => {
+  const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
+  const [message, setMessage] = useState<Message | undefined>()
+  const [dataStamp, setDataStamp] = useState(0)
+  const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
+  const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
+  const {loading, callWithLoading} = useLoading()
+
+  // Layout selection
+  const [layoutKeys, setLayoutKeys] = useState<string[]>([])
+  const [layoutKey, setLayoutKey] = useState<string>()
+  const [laoutDefinitions, setLayoutDefinitions] = useState<
+    Record<string, DashboardLayoutDefiniton>
+  >({})
+  const layoutDefinition = laoutDefinitions[layoutKey || '']
+
+  const [alteredLayout, setAlteredLayout] = useState<DashboardLayoutDefiniton>()
+  useEffect(() => {
+    setAlteredLayout(undefined)
+  }, [layoutKey])
 
   useEffect(() => {
     const fetchLaoutKeys = async () => {
@@ -797,8 +857,37 @@ const DynamicDashboardPage: FunctionComponent<
     callWithLoading(fetchDevices)
   }, [callWithLoading])
 
+  const onSaveClicked = useCallback(() => {
+    ;(async () => {
+      const text = JSON.stringify(alteredLayout, undefined, 2)
+      await fetch(`/api/dynamic/upload/${layoutKey}.json`, {
+        body: text,
+        method: 'POST',
+      })
+      setLayoutDefinitions((c) =>
+        Object.fromEntries(
+          Object.entries(c).filter(([key]) => key !== layoutKey)
+        )
+      )
+      setAlteredLayout(undefined)
+    })()
+  }, [alteredLayout, layoutKey])
+
   const pageControls = (
     <>
+      {alteredLayout && (
+        <Tooltip title="Save layout" placement="topRight">
+          <Button
+            type="primary"
+            style={{marginRight: 10}}
+            onClick={onSaveClicked}
+            disabled={loading}
+          >
+            Save
+          </Button>
+        </Tooltip>
+      )}
+
       <Tooltip title={'Choose dashboard'} placement="left">
         <Select
           value={layoutKey}
@@ -917,37 +1006,15 @@ const DynamicDashboardPage: FunctionComponent<
       </div>
       <DataManagerContextProvider value={manager}>
         {layoutDefinition ? (
-          <DashboardLayout {...{layoutDefinition, svgStrings}} />
+          <DashboardLayout
+            {...{layoutDefinition, svgStrings}}
+            onLayoutChanged={setAlteredLayout}
+          />
         ) : undefined}
       </DataManagerContextProvider>
 
       {layoutKey === dashboardSelectCreateNewOption ? (
-        <Card
-          title="How to create new dynamic dashboard"
-          extra={
-            <Upload
-              accept=".json,.svg"
-              multiple={true}
-              beforeUpload={(file) => {
-                const reader = new FileReader()
-                reader.onload = (e) => {
-                  const text = (e?.target?.result as string | undefined) ?? ''
-                  fetch(`/api/dynamic/upload/${file.name}`, {
-                    body: text,
-                    method: 'POST',
-                  })
-                }
-                reader.readAsText(file)
-
-                return false
-              }}
-            >
-              <Button icon={<UploadOutlined />}>Upload</Button>
-            </Upload>
-          }
-        >
-          <Markdown source={helpText} />
-        </Card>
+        <CreateNewDashboardPage />
       ) : undefined}
     </PageContent>
   )
