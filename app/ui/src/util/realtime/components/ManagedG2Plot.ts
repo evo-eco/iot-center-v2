@@ -84,6 +84,7 @@ export class ManagedG2Plot extends ManagedComponent<{
 
   protected _destroy(): void {
     this._plot?.destroy?.()
+    this._plot = undefined
   }
 
   protected _render(): void {

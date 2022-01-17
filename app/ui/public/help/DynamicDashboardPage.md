@@ -18,6 +18,16 @@ which will tell your IDE that it should start use schema for validation. By this
 
 *tip: each cell has unique type property, select type first and IDE will help you fill in rest of the cell properties*
 
+## Properties
+
+### Layout
+layout properties (`x`, `y`, `w`, `h`) are used by react-grid-layout with **12** columns
+
+examples:
+ - [example-0](https://react-grid-layout.github.io/react-grid-layout/examples/0-showcase.html) 
+ - [example-2](https://react-grid-layout.github.io/react-grid-layout/examples/2-no-dragging.html)
+
+
 ## Curently supported plot types
 
 ### line

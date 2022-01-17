@@ -24,6 +24,9 @@ ENV NODE_ENV production
 WORKDIR /usr/src/app
 # Copy built assets from builder
 COPY --chown=node:node --from=builder /app/ .
+# Create and give permissions for app data
+RUN mkdir -p /usr/src/data
+RUN chmod ugo+rwx /usr/src/data
 # Expose port
 EXPOSE 5000
 # Start IoT Center

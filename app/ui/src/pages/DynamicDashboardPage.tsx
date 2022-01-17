@@ -595,7 +595,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <ManagedComponentReact
                   component={ManagedSvg}
                   keys={asArray(cell.field)}
-                  props={{svgString: svgStrings[cell.file]}}
+                  // TODO: add renderer option into definition file
+                  props={{svgString: svgStrings[cell.file], renderer: 'svg'}}
                 />
               ) : undefined}
             </div>
