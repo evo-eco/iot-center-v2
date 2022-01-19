@@ -33,82 +33,27 @@ import {
 } from '../util/realtime'
 import {DataManagerContextProvider, useWebSocket} from '../util/realtime/react'
 import Markdown from '../util/Markdown'
-import {UploadOutlined} from '@ant-design/icons'
+import {PlusOutlined, SettingOutlined, UploadOutlined} from '@ant-design/icons'
 import {ManagedComponentReact} from '../util/realtime/react/ManagedComponentReact'
+import Modal from 'antd/lib/modal/Modal'
+import {
+  DashboardCellPlotGauge,
+  DashboardCellPlotLine,
+  DashboardCellPlot,
+  DashboardCellLayout,
+  DashboardLayoutDefiniton,
+  DashboardCell,
+  DashboardCellSvg,
+  isDashboarCellSvg,
+} from '../util/dynamic/types'
+import {CellEdit} from '../util/dynamic'
 
-//TODO: escalations instead of console.error
-//TODO: file upload JSON definition of dashboardu with JSON schema for validation
-//TODO: svg upload with escape for script for secure usage
-
-type DashboardCellLayout = {
-  /** position from left 0-11 */
-  x: number
-  /** position from top */
-  y: number
-  /** width - x coord */
-  w: number
-  /** height - y coord */
-  h: number
-}
-
+// TODO: escalations instead of console.error
+// TODO: file upload JSON definition of dashboardu with JSON schema for validation
+// TODO: svg upload with escape for script for secure usage
 // TODO: time component shows current server time
 // TODO: optional fields - defaults filling functions
 // TODO: add comments to json schema
-
-// type DashboardCellType = 'svg' | 'plot' | 'geo'
-
-type DashboardCellSvg = {
-  type: 'svg'
-  layout: DashboardCellLayout
-  field: string | string[]
-  file: string
-}
-
-// TODO: add to schema
-type DashboardCellGeoOpts = {
-  zoom?: number
-  dragable?: boolean
-}
-
-type DashboardCellGeo = {
-  type: 'geo'
-  layout: DashboardCellLayout
-  latField: string
-  lonField: string
-  Live: DashboardCellGeoOpts
-  Past: DashboardCellGeoOpts
-}
-
-// type DashboardCellPlotType = 'gauge' | 'line'
-
-type DashboardCellPlotGauge = {
-  type: 'plot'
-  layout: DashboardCellLayout
-  plotType: 'gauge'
-  field: string
-  label: string
-  range: {
-    min: number
-    max: number
-  }
-  unit: string
-  decimalPlaces: number
-}
-
-type DashboardCellPlotLine = {
-  layout: DashboardCellLayout
-  type: 'plot'
-  plotType: 'line'
-  field: string | string[]
-  label: string
-}
-
-type DashboardCellPlot = DashboardCellPlotGauge | DashboardCellPlotLine
-
-type DashboardCell = DashboardCellSvg | DashboardCellPlot | DashboardCellGeo
-
-// TODO: height/width and other props of react grid
-type DashboardLayoutDefiniton = {cells: DashboardCell[]}
 
 /*
  ********************************************
@@ -537,7 +482,58 @@ const useSource = (
 type DashboardLayoutProps = {
   layoutDefinition: DashboardLayoutDefiniton
   svgStrings?: Record<string, string>
-  onLayoutChanged?: (l: DashboardLayoutDefiniton | undefined) => void
+  onLayoutChanged?: (l: DashboardLayoutDefiniton) => void
+  onCellEdit?: (i: number) => void
+}
+
+export const DashboardCellComponent: FunctionComponent<{
+  cell: DashboardCell
+  svgStrings: Record<string, string>
+}> = ({cell, svgStrings}) => {
+  return (
+    <div style={{height: '100%', width: '100%', backgroundColor: 'white'}}>
+      <div
+        style={{
+          height: 28,
+          paddingLeft: 10,
+          paddingTop: 5,
+          // borderBottomColor:"gray", borderBottomWidth:"1px", borderBottomStyle:"solid"
+        }}
+      >
+        {'label' in cell ? cell.label : ''}
+      </div>
+      <div
+        style={{
+          height: 'calc(100% - 28px)',
+          width: '100%',
+          padding: '0px 20px 20px 20px',
+        }}
+      >
+        {cell.type === 'plot' ? (
+          <ManagedComponentReact
+            component={ManagedG2Plot}
+            keys={asArray(cell.field)}
+            props={{ctor: cell.plotType, options: plotOptionsFor(cell)}}
+          />
+        ) : undefined}
+        {cell.type === 'geo' ? (
+          <ManagedComponentReact
+            component={ManagedMap}
+            keys={[cell.latField, cell.lonField]}
+            props={{}}
+          />
+        ) : undefined}
+        {cell.type === 'svg' ? (
+          <ManagedComponentReact
+            component={ManagedSvg}
+            keys={asArray(cell.field)}
+            // TODO: add renderer option into definition file
+            props={{svgString: svgStrings[cell.file], renderer: 'svg'}}
+          />
+        ) : undefined}
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -547,6 +543,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   layoutDefinition,
   svgStrings = {},
   onLayoutChanged = () => undefined,
+  onCellEdit = () => undefined,
 }) => {
   const {cells} = layoutDefinition
 
@@ -555,7 +552,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       cols={12}
       rowHeight={80}
       onLayoutChange={(e) => {
-        console.log(e)
         const layoutCopy = {...layoutDefinition}
         let changed = false
         layoutCopy.cells = cells.map((cell, i) => ({
@@ -575,58 +571,50 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             return newLayout
           })(),
         }))
+        // TODO: remove this after comparator done
         if (changed) onLayoutChanged(layoutCopy)
-        else onLayoutChanged(undefined)
+        else onLayoutChanged(layoutDefinition)
       }}
     >
       {cells.map((cell, i) => (
-        <div key={JSON.stringify({cell, i})} data-grid={cell.layout}>
-          <div
-            style={{height: '100%', width: '100%', backgroundColor: 'white'}}
-          >
-            <div
-              style={{
-                height: 28,
-                paddingLeft: 10,
-                paddingTop: 5,
-                // borderBottomColor:"gray", borderBottomWidth:"1px", borderBottomStyle:"solid"
-              }}
-            >
-              {'label' in cell ? cell.label : ''}
-            </div>
-            <div
-              style={{
-                height: 'calc(100% - 28px)',
-                width: '100%',
-                padding: '0px 20px 20px 20px',
-              }}
-            >
-              {cell.type === 'plot' ? (
-                <ManagedComponentReact
-                  component={ManagedG2Plot}
-                  keys={asArray(cell.field)}
-                  props={{ctor: cell.plotType, options: plotOptionsFor(cell)}}
-                />
-              ) : undefined}
-              {cell.type === 'geo' ? (
-                <ManagedComponentReact
-                  component={ManagedMap}
-                  keys={[cell.latField, cell.lonField]}
-                  props={{}}
-                />
-              ) : undefined}
-              {cell.type === 'svg' ? (
-                <ManagedComponentReact
-                  component={ManagedSvg}
-                  keys={asArray(cell.field)}
-                  // TODO: add renderer option into definition file
-                  props={{svgString: svgStrings[cell.file], renderer: 'svg'}}
-                />
-              ) : undefined}
-            </div>
-          </div>
+        <div
+          key={JSON.stringify({cell, i})}
+          data-grid={cell.layout}
+          style={{position: 'relative'}}
+        >
+          <Button
+            size="small"
+            icon={<SettingOutlined />}
+            style={{position: 'absolute', right: 10, top: 10}}
+            onClick={() => {
+              onCellEdit(i)
+            }}
+          ></Button>
+          <DashboardCellComponent {...{cell, svgStrings}} />
         </div>
       ))}
+
+      <div
+        key={cells.length}
+        data-grid={{
+          x: 0,
+          y: 10000,
+          w: 24,
+          h: 3,
+          isDraggable: false,
+          isResizable: false,
+        }}
+        style={{position: 'relative'}}
+      >
+        <Button
+          icon={<PlusOutlined />}
+          type="dashed"
+          style={{width: '100%', height: '100%', borderWidth: '3px'}}
+          onClick={() => {
+            onCellEdit(cells.length)
+          }}
+        ></Button>
+      </div>
     </ReactGridLayoutFixed>
   )
 }
@@ -679,6 +667,37 @@ const useLoading = () => {
   )
 
   return {loading, callWithLoading}
+}
+
+
+export const useSvgStrings = (requested: string[]) => {
+  const [svgStrings, setSvgStrings] = useState<Record<string, string>>({})
+  const [prevReq, setPrevReq] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchSvgStrings = async () => {
+      try {
+        const results = await Promise.all(
+          requested.map(async (key) => {
+            const res = await fetch(`/api/dynamic/svg/${key}`)
+            const text = await res.text()
+            return [key, text] as const
+          })
+        )
+
+        setSvgStrings(Object.fromEntries(results))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    if (JSON.stringify(prevReq) !== JSON.stringify(requested)){
+      setPrevReq(requested)
+      fetchSvgStrings()
+    }
+  }, [requested])
+
+  return svgStrings
 }
 
 const dashboardSelectCreateNewOption = 'create new'
@@ -752,12 +771,24 @@ const DynamicDashboardPage: FunctionComponent<
   const [laoutDefinitions, setLayoutDefinitions] = useState<
     Record<string, DashboardLayoutDefiniton>
   >({})
-  const layoutDefinition = laoutDefinitions[layoutKey || '']
 
-  const [alteredLayout, setAlteredLayout] = useState<DashboardLayoutDefiniton>()
+  const layoutDefinitionOriginal = laoutDefinitions[layoutKey || '']
+
+  const [alteredLayout, setAlteredLayout] = useState<DashboardLayoutDefiniton>(
+    laoutDefinitions[layoutKey || '']
+  )
   useEffect(() => {
-    setAlteredLayout(undefined)
-  }, [layoutKey])
+    setAlteredLayout(layoutDefinitionOriginal)
+  }, [layoutKey, laoutDefinitions])
+
+  useEffect(() => {
+    console.log(alteredLayout)
+  }, [alteredLayout])
+
+  const layoutDefinition = alteredLayout
+
+  // TODO: deep compare altered
+  const isLayoutModified = alteredLayout !== layoutDefinitionOriginal
 
   useEffect(() => {
     const fetchLaoutKeys = async () => {
@@ -790,36 +821,10 @@ const DynamicDashboardPage: FunctionComponent<
 
   const fields = useFields(layoutDefinition)
 
-  const [svgStrings, setSvgStrings] = useState<Record<string, string>>({})
+  const svgKeys =
+    layoutDefinition?.cells.filter(isDashboarCellSvg).map((x) => x.file) || []
 
-  useEffect(() => {
-    const fetchSvgStrings = async () => {
-      if (!layoutDefinition) return
-      try {
-        const isDashboarCellSvg = (c: DashboardCell): c is DashboardCellSvg => {
-          return c.type === 'svg'
-        }
-
-        const svgKeys = layoutDefinition.cells
-          .filter(isDashboarCellSvg)
-          .map((x) => x.file)
-
-        const results = await Promise.all(
-          svgKeys.map(async (key) => {
-            const res = await fetch(`/api/dynamic/svg/${key}`)
-            const text = await res.text()
-            return [key, text] as const
-          })
-        )
-
-        setSvgStrings(Object.fromEntries(results))
-      } catch (e) {
-        console.error(e)
-      }
-    }
-
-    callWithLoading(fetchSvgStrings)
-  }, [layoutDefinition, callWithLoading])
+  const svgStrings = useSvgStrings(svgKeys)
 
   const {loading: loadingSource, manager, avalibleFields} = useSource(
     deviceId,
@@ -869,13 +874,15 @@ const DynamicDashboardPage: FunctionComponent<
           Object.entries(c).filter(([key]) => key !== layoutKey)
         )
       )
-      setAlteredLayout(undefined)
+      setAlteredLayout(layoutDefinitionOriginal)
     })()
-  }, [alteredLayout, layoutKey])
+  }, [alteredLayout, layoutDefinitionOriginal])
+
+  const [editedCellIndex, setEditedCellIndex] = useState<number | undefined>()
 
   const pageControls = (
     <>
-      {alteredLayout && (
+      {isLayoutModified && (
         <Tooltip title="Save layout" placement="topRight">
           <Button
             type="primary"
@@ -1005,10 +1012,21 @@ const DynamicDashboardPage: FunctionComponent<
           : ''}
       </div>
       <DataManagerContextProvider value={manager}>
+        <CellEdit
+          {...{layoutDefinition, editedCellIndex}}
+          onDone={(l) => {
+            setAlteredLayout(l)
+            setEditedCellIndex(undefined)
+          }}
+          onCancel={() => {
+            setEditedCellIndex(undefined)
+          }}
+        />
         {layoutDefinition ? (
           <DashboardLayout
             {...{layoutDefinition, svgStrings}}
             onLayoutChanged={setAlteredLayout}
+            onCellEdit={setEditedCellIndex}
           />
         ) : undefined}
       </DataManagerContextProvider>
