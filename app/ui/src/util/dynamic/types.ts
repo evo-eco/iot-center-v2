@@ -1,4 +1,3 @@
-
 export type DashboardCellLayout = {
   /** position from left 0-11 */
   x: number
@@ -60,11 +59,13 @@ export type DashboardCellPlotLine = {
 
 export type DashboardCellPlot = DashboardCellPlotGauge | DashboardCellPlotLine
 
-export type DashboardCell = DashboardCellSvg | DashboardCellPlot | DashboardCellGeo
+export type DashboardCell =
+  | DashboardCellSvg
+  | DashboardCellPlot
+  | DashboardCellGeo
 
 // TODO: height/width and other props of react grid
-export type DashboardLayoutDefiniton = { cells: DashboardCell[] }
-
+export type DashboardLayoutDefiniton = {cells: DashboardCell[]}
 
 export const CELL_TYPES: readonly DashboardCellType[] = ['plot', 'geo', 'svg']
 export const PLOT_TYPES: readonly DashboardCellPlotType[] = ['line', 'gauge']

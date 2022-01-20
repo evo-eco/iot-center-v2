@@ -84,6 +84,16 @@ router.get('/keys', (_req, res) => {
   })
 })
 
+router.get('/svgs', (_req, res) => {
+  fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
+    if (e) return
+    const svgs = files
+      .filter((f) => f.endsWith('.svg'))
+      .map((d) => d.split('.').slice(0, -1).join('.'))
+    res.json(svgs)
+  })
+})
+
 router.get('/dashboard/:key', (req, res) => {
   const key = req.params.key
 

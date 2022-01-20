@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from 'react'
 import {RouteComponentProps} from 'react-router-dom'
-import {Button, Card, Select, Tooltip, Upload} from 'antd'
+import {Button, Select, Tooltip} from 'antd'
 import PageContent, {Message} from './PageContent'
 import {IconRefresh, IconSettings, colorLink, colorPrimary} from '../styles'
 import ReactGridLayoutFixed from '../util/ReactGridLayoutFixed'
@@ -21,7 +21,10 @@ import {GaugeOptions, LineOptions, Datum} from '@antv/g2plot'
 import {Table as GiraffeTable} from '@influxdata/giraffe'
 import {VIRTUAL_DEVICE} from '../App'
 import {DeviceInfo} from './DevicesPage'
-import {DiagramEntryPoint} from '../util/realtime'
+import {
+  DataManagerDataChangedCallback,
+  DiagramEntryPoint,
+} from '../util/realtime'
 import {queryTable} from '../util/queryTable'
 import {
   asArray,
@@ -32,10 +35,8 @@ import {
   MinAndMax,
 } from '../util/realtime'
 import {DataManagerContextProvider, useWebSocket} from '../util/realtime/react'
-import Markdown from '../util/Markdown'
-import {PlusOutlined, SettingOutlined, UploadOutlined} from '@ant-design/icons'
+import {PlusOutlined, SettingOutlined} from '@ant-design/icons'
 import {ManagedComponentReact} from '../util/realtime/react/ManagedComponentReact'
-import Modal from 'antd/lib/modal/Modal'
 import {
   DashboardCellPlotGauge,
   DashboardCellPlotLine,
@@ -43,10 +44,13 @@ import {
   DashboardCellLayout,
   DashboardLayoutDefiniton,
   DashboardCell,
-  DashboardCellSvg,
   isDashboarCellSvg,
 } from '../util/dynamic/types'
 import {CellEdit} from '../util/dynamic'
+import {
+  CreateNewDashboardPage,
+  DASHBOARD_SELECT_CREATE_NEW_OPTION,
+} from '../util/dynamic/CreateNewDashboardPage'
 
 // TODO: escalations instead of console.error
 // TODO: file upload JSON definition of dashboardu with JSON schema for validation
@@ -84,7 +88,7 @@ const fetchDeviceConfig = async (deviceId: string): Promise<DeviceConfig> => {
   return deviceConfig
 }
 
-const fetchDeviceKeys = async (
+const fetchDeviceFields = async (
   config: DeviceConfig,
   timeStart = '-30d'
 ): Promise<string[]> => {
@@ -386,8 +390,33 @@ const useSource = (
   const [state, setState] = useState({
     loading: false,
     manager: new DataManager(),
-    avalibleFields: [] as string[],
+    availableFields: [] as string[],
   })
+
+  const addAvailableFields = (fields: string[]) => {
+    setState((s) =>
+      fields.some((x) => !s.availableFields.some((y) => x === y))
+        ? {
+            ...s,
+            availableFields: s.availableFields
+              .concat(
+                fields.filter((x) => !s.availableFields.some((y) => x === y))
+              )
+              .sort(),
+          }
+        : s
+    )
+  }
+
+  useEffect(() => {
+    const manager = state.manager
+    const updateAvailableFields: DataManagerDataChangedCallback = (e) => {
+      addAvailableFields(e.changedKeys)
+    }
+    manager.addOnChange(updateAvailableFields)
+
+    return () => manager.removeOnChange(updateAvailableFields)
+  }, [state.manager])
 
   const isRealtime = getIsRealtime(timeStart)
 
@@ -451,8 +480,8 @@ const useSource = (
         const table = await fetchDeviceMeasurements(config, timeStart, fields)
         const dataPoints = giraffeTableToDiagramEntryPoints(table)
         updateData(dataPoints)
-        const avalibleFields = await fetchDeviceKeys(config, timeStart)
-        setState((s) => ({...s, avalibleFields}))
+        const availableFields = await fetchDeviceFields(config, timeStart)
+        addAvailableFields(availableFields)
       } catch (e) {
         console.error(e)
       } finally {
@@ -464,7 +493,7 @@ const useSource = (
     if (!isRealtime) fetchData()
     else
       setState((s) =>
-        s.avalibleFields.length ? {...s, avalibleFields: []} : s
+        s.availableFields.length ? {...s, availableFields: []} : s
       )
   }, [
     deviceId,
@@ -622,7 +651,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 /**
  * returns fields for given layout
  */
-const getFields = (layout: DashboardLayoutDefiniton | undefined): string[] => {
+const getFieldsOfLayout = (
+  layout: DashboardLayoutDefiniton | undefined
+): string[] => {
   if (!layout) return []
   const fields = new Set<string>()
 
@@ -632,6 +663,8 @@ const getFields = (layout: DashboardLayoutDefiniton | undefined): string[] => {
     } else if (cell.type === 'geo') {
       fields.add(cell.latField)
       fields.add(cell.lonField)
+    } else if (cell.type === 'svg') {
+      asArray(cell.field).forEach((f) => fields.add(f))
     }
   })
 
@@ -639,7 +672,7 @@ const getFields = (layout: DashboardLayoutDefiniton | undefined): string[] => {
 }
 
 const useFields = (layout: DashboardLayoutDefiniton | undefined): string[] => {
-  const fieldsLayout = getFields(layout)
+  const fieldsLayout = getFieldsOfLayout(layout)
   const [fields, setFields] = useState<string[]>([])
 
   if (
@@ -669,10 +702,9 @@ const useLoading = () => {
   return {loading, callWithLoading}
 }
 
-
-export const useSvgStrings = (requested: string[]) => {
+export const useSvgStrings = (requested: string[]): Record<string, string> => {
   const [svgStrings, setSvgStrings] = useState<Record<string, string>>({})
-  const [prevReq, setPrevReq] = useState<string[]>([]);
+  const [prevReq, setPrevReq] = useState<string[]>([])
 
   useEffect(() => {
     const fetchSvgStrings = async () => {
@@ -691,68 +723,13 @@ export const useSvgStrings = (requested: string[]) => {
       }
     }
 
-    if (JSON.stringify(prevReq) !== JSON.stringify(requested)){
+    if (JSON.stringify(prevReq) !== JSON.stringify(requested)) {
       setPrevReq(requested)
       fetchSvgStrings()
     }
-  }, [requested])
+  }, [requested, prevReq])
 
   return svgStrings
-}
-
-const dashboardSelectCreateNewOption = 'create new'
-
-const CreateNewDashboardPage: FunctionComponent = () => {
-  const [helpText, setHelpText] = useState('')
-  useEffect(() => {
-    // load markdown from file
-    const fetchMarkdown = async () => {
-      try {
-        const [txt, dir] = await Promise.all([
-          fetch('/help/DynamicDashboardPage.md').then((x) => x.text()),
-          fetch('/api/dynamic/dir').then((x) => x.text()),
-        ])
-        setHelpText(
-          (txt ?? '').startsWith('<!')
-            ? 'HELP NOT FOUND'
-            : txt.replace('{Dynamic Dir}', dir)
-        )
-      } catch (e) {
-        console.error(e)
-      }
-    }
-
-    fetchMarkdown()
-  }, [])
-
-  return (
-    <Card
-      title="How to create new dynamic dashboard"
-      extra={
-        <Upload
-          accept=".json,.svg"
-          multiple={true}
-          beforeUpload={(file) => {
-            const reader = new FileReader()
-            reader.onload = (e) => {
-              const text = (e?.target?.result as string | undefined) ?? ''
-              fetch(`/api/dynamic/upload/${file.name}`, {
-                body: text,
-                method: 'POST',
-              })
-            }
-            reader.readAsText(file)
-
-            return false
-          }}
-        >
-          <Button icon={<UploadOutlined />}>Upload</Button>
-        </Upload>
-      }
-    >
-      <Markdown source={helpText} />
-    </Card>
-  )
 }
 
 const DynamicDashboardPage: FunctionComponent<
@@ -779,11 +756,7 @@ const DynamicDashboardPage: FunctionComponent<
   )
   useEffect(() => {
     setAlteredLayout(layoutDefinitionOriginal)
-  }, [layoutKey, laoutDefinitions])
-
-  useEffect(() => {
-    console.log(alteredLayout)
-  }, [alteredLayout])
+  }, [layoutDefinitionOriginal])
 
   const layoutDefinition = alteredLayout
 
@@ -805,7 +778,7 @@ const DynamicDashboardPage: FunctionComponent<
     const fetchLaoutConfig = async () => {
       if (
         !layoutKey ||
-        layoutKey === dashboardSelectCreateNewOption ||
+        layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION ||
         layoutDefinition
       )
         return
@@ -826,7 +799,7 @@ const DynamicDashboardPage: FunctionComponent<
 
   const svgStrings = useSvgStrings(svgKeys)
 
-  const {loading: loadingSource, manager, avalibleFields} = useSource(
+  const {loading: loadingSource, manager, availableFields} = useSource(
     deviceId,
     timeStart,
     fields,
@@ -876,7 +849,7 @@ const DynamicDashboardPage: FunctionComponent<
       )
       setAlteredLayout(layoutDefinitionOriginal)
     })()
-  }, [alteredLayout, layoutDefinitionOriginal])
+  }, [alteredLayout, layoutDefinitionOriginal, layoutKey])
 
   const [editedCellIndex, setEditedCellIndex] = useState<number | undefined>()
 
@@ -909,11 +882,11 @@ const DynamicDashboardPage: FunctionComponent<
             </Select.Option>
           ))}
           <Select.Option
-            key={dashboardSelectCreateNewOption}
-            value={dashboardSelectCreateNewOption}
+            key={DASHBOARD_SELECT_CREATE_NEW_OPTION}
+            value={DASHBOARD_SELECT_CREATE_NEW_OPTION}
             style={{background: '#00d019', color: 'black'}}
           >
-            {dashboardSelectCreateNewOption}
+            {DASHBOARD_SELECT_CREATE_NEW_OPTION}
           </Select.Option>
         </Select>
       </Tooltip>
@@ -993,10 +966,10 @@ const DynamicDashboardPage: FunctionComponent<
     </>
   )
 
-  const influxUnusedFields =
-    layoutKey === dashboardSelectCreateNewOption
+  const unusedFields =
+    layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION
       ? ''
-      : avalibleFields.filter((x) => !fields.some((y) => y === x)).join(', ')
+      : availableFields.filter((x) => !fields.some((y) => y === x)).join(', ')
 
   return (
     <PageContent
@@ -1006,14 +979,20 @@ const DynamicDashboardPage: FunctionComponent<
       spin={loading || loadingSource}
       forceShowScroll={true}
     >
-      <div style={{position: 'absolute', zIndex: 2, right: 0}}>
-        {influxUnusedFields?.length
-          ? `influx unused fields: ${influxUnusedFields}`
-          : ''}
+      <div
+        style={{
+          position: 'absolute',
+          zIndex: 2,
+          right: 0,
+          top: -12,
+          color: 'gray',
+        }}
+      >
+        {unusedFields?.length ? `unused fields: ${unusedFields}` : ''}
       </div>
       <DataManagerContextProvider value={manager}>
         <CellEdit
-          {...{layoutDefinition, editedCellIndex}}
+          {...{layoutDefinition, editedCellIndex, availableFields}}
           onDone={(l) => {
             setAlteredLayout(l)
             setEditedCellIndex(undefined)
@@ -1031,7 +1010,7 @@ const DynamicDashboardPage: FunctionComponent<
         ) : undefined}
       </DataManagerContextProvider>
 
-      {layoutKey === dashboardSelectCreateNewOption ? (
+      {layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION ? (
         <CreateNewDashboardPage />
       ) : undefined}
     </PageContent>

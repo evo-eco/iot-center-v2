@@ -1,7 +1,6 @@
 import React, {FunctionComponent, useEffect, useState, useCallback} from 'react'
 import {Collapse, Row, Select} from 'antd'
-import {Col, Form, Input, Button} from 'antd'
-import ButtonGroup from 'antd/lib/button/button-group'
+import {Col, Form, Input} from 'antd'
 
 import Modal from 'antd/lib/modal/Modal'
 import {
@@ -13,10 +12,6 @@ import {
   PLOT_TYPES,
   DashboardCellPlotGauge,
 } from '.'
-import {
-  DashboardCellComponent,
-  useSvgStrings,
-} from '../../pages/DynamicDashboardPage'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 
 const labelCol = {xs: 8}
@@ -74,17 +69,28 @@ const getcellDefaults = (
 type CellEditProps = {
   layoutDefinition?: DashboardLayoutDefiniton
   editedCellIndex?: number
+  availableFields?: string[] | undefined
   onCancel?: () => void
   onDone?: (l: DashboardLayoutDefiniton) => void
 }
 
+const fetchSvgKeys = async () =>
+  (await (await fetch(`/api/dynamic/svgs`)).json()) as string[]
+
 export const CellEdit: FunctionComponent<CellEditProps> = ({
   editedCellIndex,
   layoutDefinition,
+  availableFields = [],
   onCancel,
   onDone,
 }) => {
   const [cell, setCell] = useState<DashboardCell | undefined>(getcellDefaults())
+  const [svgKeys, setSvgKeys] = useState<string[]>([])
+  useEffect(() => {
+    if (editedCellIndex === undefined) return
+    console.log('fetching')
+    fetchSvgKeys().then(setSvgKeys)
+  }, [editedCellIndex])
 
   useEffect(() => {
     const cell =
@@ -95,14 +101,13 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
   }, [editedCellIndex, layoutDefinition])
 
   const onOk = useCallback(() => {
-    debugger
-    if (!cell) return
+    if (!cell || editedCellIndex === undefined) return
     const layoutCpy = JSON.parse(
       JSON.stringify(layoutDefinition)
     ) as DashboardLayoutDefiniton
-    layoutCpy.cells[editedCellIndex!] = cell
+    layoutCpy.cells[editedCellIndex] = cell
     onDone?.(layoutCpy)
-  }, [cell, layoutDefinition, editedCellIndex])
+  }, [onDone, cell, layoutDefinition, editedCellIndex])
 
   const setCellProp = (prop: string, value: any) => {
     setCell((c) => c && {...c, [prop]: value})
@@ -126,6 +131,7 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
     <Select
       mode="tags"
       value={(cell as any)?.field}
+      options={availableFields.map((value) => ({value}))}
       onChange={callbackDirect('field')}
     ></Select>
   )
@@ -178,10 +184,12 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
           {cell?.type === 'plot' && cell?.plotType === 'gauge' ? (
             <>
               <Form.Item label="field">
-                <Input
+                <Select
+                  showSearch
                   value={cell.field}
-                  onChange={callbackHtmlEvent('field')}
-                ></Input>
+                  options={availableFields.map((value) => ({value}))}
+                  onChange={callbackDirect('field')}
+                />
               </Form.Item>
               <Form.Item label="range">
                 <Row style={{width: '100%'}}>
@@ -242,16 +250,20 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
           {cell?.type === 'geo' ? (
             <>
               <Form.Item label="lat field">
-                <Input
+                <Select
+                  showSearch
                   value={cell.latField}
-                  onChange={callbackHtmlEvent('latField')}
-                ></Input>
+                  options={availableFields.map((value) => ({value}))}
+                  onChange={callbackDirect('latField')}
+                />
               </Form.Item>
               <Form.Item label="lon field">
-                <Input
+                <Select
+                  showSearch
                   value={cell.lonField}
-                  onChange={callbackHtmlEvent('lonField')}
-                ></Input>
+                  options={availableFields.map((value) => ({value}))}
+                  onChange={callbackDirect('lonField')}
+                />
               </Form.Item>
             </>
           ) : undefined}
@@ -260,17 +272,22 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
             <>
               <Form.Item label="fields">{fieldsSelect}</Form.Item>
               <Form.Item label="file">
-                <Input
+                <Select
+                  showSearch
                   value={cell.file}
-                  onChange={callbackHtmlEvent('file')}
-                ></Input>
+                  options={svgKeys.map((value) => ({value}))}
+                  onChange={callbackDirect('file')}
+                />
               </Form.Item>
             </>
           ) : undefined}
         </Form>
         <div />
         <Collapse>
-          <CollapsePanel key={0} header={`code for cell with index ${editedCellIndex}`}>
+          <CollapsePanel
+            key={0}
+            header={`code for cell with index ${editedCellIndex}`}
+          >
             <code style={{whiteSpace: 'pre'}}>
               {JSON.stringify(cell, undefined, 2)}
             </code>

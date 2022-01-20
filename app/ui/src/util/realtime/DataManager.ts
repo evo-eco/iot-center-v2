@@ -185,7 +185,9 @@ export class DataManager {
 
   // todo: use this for no data at react state
   get availebleFields(): string[] {
-    throw new Error('not implemented')
+    return Object.entries(this._data)
+      .filter(([, x]) => x.length)
+      .map((x) => x[0])
   }
 
   private readonly _onChangeCallbacks: DataManagerDataChangedCallback[] = []
