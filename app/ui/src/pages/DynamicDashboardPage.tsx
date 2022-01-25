@@ -46,11 +46,22 @@ import {
   DashboardCell,
   isDashboarCellSvg,
 } from '../util/dynamic/types'
-import {CellEdit} from '../util/dynamic'
+import {
+  deleteDashboard,
+  fetchDashboard,
+  fetchDashboardKeys,
+  uploadDashboard,
+  useFields,
+  useLoading,
+  useRefresh,
+  useSvgStrings,
+} from '../util/dynamic'
 import {
   CreateNewDashboardPage,
   DASHBOARD_SELECT_CREATE_NEW_OPTION,
-} from '../util/dynamic/CreateNewDashboardPage'
+  DynamicDashboardTitle,
+  CellEdit,
+} from '../util/dynamic/components'
 
 // TODO: escalations instead of console.error
 // TODO: file upload JSON definition of dashboardu with JSON schema for validation
@@ -373,6 +384,7 @@ const getIsRealtime = (timeStart: string) =>
 
 interface PropsRoute {
   deviceId?: string
+  dashboard?: string
 }
 
 interface Props {
@@ -508,13 +520,6 @@ const useSource = (
   return state
 }
 
-type DashboardLayoutProps = {
-  layoutDefinition: DashboardLayoutDefiniton
-  svgStrings?: Record<string, string>
-  onLayoutChanged?: (l: DashboardLayoutDefiniton) => void
-  onCellEdit?: (i: number) => void
-}
-
 export const DashboardCellComponent: FunctionComponent<{
   cell: DashboardCell
   svgStrings: Record<string, string>
@@ -565,6 +570,14 @@ export const DashboardCellComponent: FunctionComponent<{
   )
 }
 
+type DashboardLayoutProps = {
+  layoutDefinition: DashboardLayoutDefiniton
+  svgStrings?: Record<string, string>
+  onLayoutChanged?: (l: DashboardLayoutDefiniton) => void
+  onCellEdit?: (i: number) => void
+  isEditing: boolean
+}
+
 /**
  * render dashboard cells for layout, data passed by context
  */
@@ -573,6 +586,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   svgStrings = {},
   onLayoutChanged = () => undefined,
   onCellEdit = () => undefined,
+  isEditing,
 }) => {
   const {cells} = layoutDefinition
 
@@ -604,6 +618,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         if (changed) onLayoutChanged(layoutCopy)
         else onLayoutChanged(layoutDefinition)
       }}
+      isDraggable={isEditing}
+      isResizable={isEditing}
     >
       {cells.map((cell, i) => (
         <div
@@ -611,14 +627,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           data-grid={cell.layout}
           style={{position: 'relative'}}
         >
-          <Button
-            size="small"
-            icon={<SettingOutlined />}
-            style={{position: 'absolute', right: 10, top: 10}}
-            onClick={() => {
-              onCellEdit(i)
-            }}
-          ></Button>
+          {isEditing ? (
+            <Button
+              size="small"
+              icon={<SettingOutlined />}
+              style={{position: 'absolute', right: 10, top: 10}}
+              onClick={() => {
+                onCellEdit(i)
+              }}
+            />
+          ) : undefined}
           <DashboardCellComponent {...{cell, svgStrings}} />
         </div>
       ))}
@@ -648,131 +666,69 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   )
 }
 
-/**
- * returns fields for given layout
- */
-const getFieldsOfLayout = (
-  layout: DashboardLayoutDefiniton | undefined
-): string[] => {
-  if (!layout) return []
-  const fields = new Set<string>()
-
-  layout.cells.forEach((cell) => {
-    if (cell.type === 'plot') {
-      asArray(cell.field).forEach((f) => fields.add(f))
-    } else if (cell.type === 'geo') {
-      fields.add(cell.latField)
-      fields.add(cell.lonField)
-    } else if (cell.type === 'svg') {
-      asArray(cell.field).forEach((f) => fields.add(f))
-    }
-  })
-
-  return Array.from(fields).sort()
-}
-
-const useFields = (layout: DashboardLayoutDefiniton | undefined): string[] => {
-  const fieldsLayout = getFieldsOfLayout(layout)
-  const [fields, setFields] = useState<string[]>([])
-
-  if (
-    fieldsLayout.length !== fields.length ||
-    fieldsLayout.some((f, i) => f !== fields[i])
-  ) {
-    setFields(fieldsLayout)
-  }
-
-  return fields
-}
-
-const useLoading = () => {
-  const [loading, setLoading] = useState(false)
-  const callWithLoading = useCallback(
-    async <T,>(fnc: () => Promise<T>): Promise<T> => {
-      try {
-        setLoading(true)
-        return await fnc()
-      } finally {
-        setLoading(false)
-      }
-    },
-    []
-  )
-
-  return {loading, callWithLoading}
-}
-
-export const useSvgStrings = (requested: string[]): Record<string, string> => {
-  const [svgStrings, setSvgStrings] = useState<Record<string, string>>({})
-  const [prevReq, setPrevReq] = useState<string[]>([])
-
-  useEffect(() => {
-    const fetchSvgStrings = async () => {
-      try {
-        const results = await Promise.all(
-          requested.map(async (key) => {
-            const res = await fetch(`/api/dynamic/svg/${key}`)
-            const text = await res.text()
-            return [key, text] as const
-          })
-        )
-
-        setSvgStrings(Object.fromEntries(results))
-      } catch (e) {
-        console.error(e)
-      }
-    }
-
-    if (JSON.stringify(prevReq) !== JSON.stringify(requested)) {
-      setPrevReq(requested)
-      fetchSvgStrings()
-    }
-  }, [requested, prevReq])
-
-  return svgStrings
-}
-
 const DynamicDashboardPage: FunctionComponent<
   RouteComponentProps<PropsRoute> & Props
 > = ({match, history, mqttEnabled}) => {
   const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
+  const layoutKey = match.params.dashboard ?? DASHBOARD_SELECT_CREATE_NEW_OPTION
+
+  const {loading, callWithLoading} = useLoading()
+  const [isEditing, setIsEditing] = useState(false)
+  useEffect(() => {
+    setIsEditing(false)
+  }, [layoutKey])
   const [message, setMessage] = useState<Message | undefined>()
-  const [dataStamp, setDataStamp] = useState(0)
+  const {refreshToken: dataRefreshToken, refresh: refreshData} = useRefresh()
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
-  const {loading, callWithLoading} = useLoading()
 
   // Layout selection
+  const {
+    refreshToken: layoutKeyRefreshToken,
+    refresh: refreshKeys,
+  } = useRefresh()
   const [layoutKeys, setLayoutKeys] = useState<string[]>([])
-  const [layoutKey, setLayoutKey] = useState<string>()
+  // const [layoutKey, setLayoutKey] = useState<string>()
   const [laoutDefinitions, setLayoutDefinitions] = useState<
     Record<string, DashboardLayoutDefiniton>
   >({})
 
   const layoutDefinitionOriginal = laoutDefinitions[layoutKey || '']
+  const setLayoutDefinitionOriginal = useCallback((
+    key: string,
+    value: DashboardLayoutDefiniton
+  ) => setLayoutDefinitions((c) => ({...c, [key]: value})), [])
 
-  const [alteredLayout, setAlteredLayout] = useState<DashboardLayoutDefiniton>(
-    laoutDefinitions[layoutKey || '']
+  const [layoutDefinition, setLayoutDefinition] = useState<DashboardLayoutDefiniton>(
+    layoutDefinitionOriginal
   )
   useEffect(() => {
-    setAlteredLayout(layoutDefinitionOriginal)
+    setLayoutDefinition(layoutDefinitionOriginal)
   }, [layoutDefinitionOriginal])
 
-  const layoutDefinition = alteredLayout
-
-  // TODO: deep compare altered
-  const isLayoutModified = alteredLayout !== layoutDefinitionOriginal
+  // select first layout if none selected
+  useEffect(() => {
+    if (layoutKeys) {
+      if (match.params.dashboard === undefined && layoutKeys[0] !== undefined) {
+        history.replace(`/dynamic/${deviceId}/${layoutKeys[0]}`)
+      } else if (
+        !layoutKeys.some((x) => x === layoutKey) ||
+        layoutKey !== DASHBOARD_SELECT_CREATE_NEW_OPTION
+      ) {
+        history.replace(`/dynamic/${deviceId}/${layoutKeys[0]}`)
+      }
+    }
+  }, [match.params.dashboard, layoutKeys])
 
   useEffect(() => {
     const fetchLaoutKeys = async () => {
-      const response = await fetch('/api/dynamic/keys')
-      const keys = await response.json()
+      const keys = await fetchDashboardKeys()
       setLayoutKeys(keys)
-      setLayoutKey(keys[0])
+      // setLayoutKey(keys[0])
     }
 
     callWithLoading(fetchLaoutKeys)
-  }, [callWithLoading])
+  }, [callWithLoading, layoutKeyRefreshToken])
 
   useEffect(() => {
     const fetchLaoutConfig = async () => {
@@ -782,9 +738,8 @@ const DynamicDashboardPage: FunctionComponent<
         layoutDefinition
       )
         return
-      const response = await fetch(`/api/dynamic/dashboard/${layoutKey}`)
-      const config = await response.json()
-      setLayoutDefinitions((c) => ({...c, [layoutKey]: config}))
+      const config = await fetchDashboard(layoutKey)
+      setLayoutDefinitionOriginal(layoutKey, config);
     }
 
     callWithLoading(fetchLaoutConfig)
@@ -803,7 +758,7 @@ const DynamicDashboardPage: FunctionComponent<
     deviceId,
     timeStart,
     fields,
-    dataStamp
+    dataRefreshToken
   )
 
   // Default time selected to Past when mqtt not configured
@@ -835,43 +790,31 @@ const DynamicDashboardPage: FunctionComponent<
     callWithLoading(fetchDevices)
   }, [callWithLoading])
 
-  const onSaveClicked = useCallback(() => {
+  const save = useCallback(() => {
     ;(async () => {
-      const text = JSON.stringify(alteredLayout, undefined, 2)
-      await fetch(`/api/dynamic/upload/${layoutKey}.json`, {
-        body: text,
-        method: 'POST',
-      })
-      setLayoutDefinitions((c) =>
-        Object.fromEntries(
-          Object.entries(c).filter(([key]) => key !== layoutKey)
-        )
-      )
-      setAlteredLayout(layoutDefinitionOriginal)
+      await uploadDashboard(layoutKey, layoutDefinition)
+      setLayoutDefinitionOriginal(layoutKey, layoutDefinition);
+      setIsEditing(false)
     })()
-  }, [alteredLayout, layoutDefinitionOriginal, layoutKey])
+  }, [layoutDefinition, layoutDefinitionOriginal, layoutKey])
 
   const [editedCellIndex, setEditedCellIndex] = useState<number | undefined>()
 
+  const onDeleteDashboard = useCallback(() => {
+    const del = async () => {
+      await deleteDashboard(layoutKey)
+      refreshKeys()
+    }
+
+    del()
+  }, [layoutKey])
+
   const pageControls = (
     <>
-      {isLayoutModified && (
-        <Tooltip title="Save layout" placement="topRight">
-          <Button
-            type="primary"
-            style={{marginRight: 10}}
-            onClick={onSaveClicked}
-            disabled={loading}
-          >
-            Save
-          </Button>
-        </Tooltip>
-      )}
-
       <Tooltip title={'Choose dashboard'} placement="left">
         <Select
           value={layoutKey}
-          onChange={setLayoutKey}
+          onChange={(key) => history.push(`/dynamic/${deviceId}/${key}`)}
           style={{minWidth: 100}}
           loading={loadingSource || mqttEnabled === undefined}
           disabled={loadingSource}
@@ -949,7 +892,7 @@ const DynamicDashboardPage: FunctionComponent<
           // disable refresh when in realtime mode
           disabled={loadingSource || isRealtime}
           loading={loadingSource}
-          onClick={() => setDataStamp(dataStamp + 1)}
+          onClick={refreshData}
           style={{marginLeft: 10}}
           icon={<IconRefresh />}
         />
@@ -966,14 +909,31 @@ const DynamicDashboardPage: FunctionComponent<
     </>
   )
 
+  const onEditCancel = useCallback(() => {
+    setLayoutDefinition(layoutDefinitionOriginal)
+    setIsEditing(false)
+  }, [])
+
   const unusedFields =
     layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION
       ? ''
       : availableFields.filter((x) => !fields.some((y) => y === x)).join(', ')
 
+  const onEditLayoutKey = useCallback(() => {
+    refreshKeys()
+  }, [])
+
   return (
     <PageContent
-      title={'Dynamic Dashboard'}
+      title={
+        <DynamicDashboardTitle
+          dashboardKey={layoutKey ?? ''}
+          {...{isEditing, setIsEditing}}
+          onEditAccept={save}
+          onEditCancel={onEditCancel}
+          onDeleteDashboard={onDeleteDashboard}
+        />
+      }
       titleExtra={pageControls}
       message={message}
       spin={loading || loadingSource}
@@ -994,7 +954,7 @@ const DynamicDashboardPage: FunctionComponent<
         <CellEdit
           {...{layoutDefinition, editedCellIndex, availableFields}}
           onDone={(l) => {
-            setAlteredLayout(l)
+            setLayoutDefinition(l)
             setEditedCellIndex(undefined)
           }}
           onCancel={() => {
@@ -1004,14 +964,15 @@ const DynamicDashboardPage: FunctionComponent<
         {layoutDefinition ? (
           <DashboardLayout
             {...{layoutDefinition, svgStrings}}
-            onLayoutChanged={setAlteredLayout}
+            onLayoutChanged={setLayoutDefinition}
             onCellEdit={setEditedCellIndex}
+            isEditing={isEditing}
           />
         ) : undefined}
       </DataManagerContextProvider>
 
       {layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION ? (
-        <CreateNewDashboardPage />
+        <CreateNewDashboardPage onEdit={onEditLayoutKey} />
       ) : undefined}
     </PageContent>
   )

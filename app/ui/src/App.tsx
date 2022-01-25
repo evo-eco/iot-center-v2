@@ -217,7 +217,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
           <Redirect exact from="/dynamic" to={`/dynamic/${VIRTUAL_DEVICE}`} />
           <Route
             exact
-            path="/dynamic/:deviceId"
+            path="/dynamic/:deviceId/:dashboard?"
             render={(props) => (
               <DynamicDashboardPage
                 {...props}

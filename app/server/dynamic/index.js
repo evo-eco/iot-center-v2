@@ -110,6 +110,24 @@ router.get('/dashboard/:key', (req, res) => {
   })
 })
 
+const pathForDashboard = (key) =>
+  path.join(DIR_DYNAMIC_DASHBOARDS, key + '.json')
+
+router.delete('/dashboard/:key', (req, res) => {
+  const key = req.params.key
+
+  fs.unlink(pathForDashboard(key), (e) => {
+    if (e) {
+      console.error(e)
+      res.status(500)
+      res.send(`Failed to delete ${key}!`)
+      return
+    }
+
+    res.send('')
+  })
+})
+
 // svg should contain xmlns="http://www.w3.org/2000/svg"
 
 router.get('/svg/:key', (req, res) => {

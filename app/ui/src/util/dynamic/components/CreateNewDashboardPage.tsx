@@ -2,7 +2,7 @@ import React from 'react'
 import {UploadOutlined} from '@ant-design/icons'
 import {Card, Upload, Button, Input} from 'antd'
 import {FunctionComponent, useEffect, useState} from 'react'
-import Markdown from '../Markdown'
+import Markdown from '../../Markdown'
 import Modal from 'antd/lib/modal/Modal'
 
 export const DASHBOARD_SELECT_CREATE_NEW_OPTION = 'create new'
@@ -13,7 +13,9 @@ const upload = (name: string, text: string) =>
     method: 'POST',
   })
 
-export const CreateNewDashboardPage: FunctionComponent = () => {
+export const CreateNewDashboardPage: FunctionComponent<{
+  onEdit: () => void
+}> = ({onEdit}) => {
   const [helpText, setHelpText] = useState('')
   useEffect(() => {
     // load markdown from file
@@ -44,7 +46,7 @@ export const CreateNewDashboardPage: FunctionComponent = () => {
         visible={typeof newPageName === 'string'}
         onCancel={() => setNewPageName(undefined)}
         onOk={() => {
-          upload(`${newPageName}.json`, `{"cells":[]}`)
+          upload(`${newPageName}.json`, `{"cells":[]}`).then(x=>onEdit())
           setNewPageName(undefined)
         }}
       >
@@ -66,7 +68,7 @@ export const CreateNewDashboardPage: FunctionComponent = () => {
                 const reader = new FileReader()
                 reader.onload = (e) => {
                   const text = (e?.target?.result as string | undefined) ?? ''
-                  upload(file.name, text)
+                  upload(file.name, text).then(x=>onEdit())
                 }
                 reader.readAsText(file)
 

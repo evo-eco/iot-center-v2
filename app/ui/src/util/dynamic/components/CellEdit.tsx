@@ -1,5 +1,5 @@
 import React, {FunctionComponent, useEffect, useState, useCallback} from 'react'
-import {Collapse, Row, Select} from 'antd'
+import {Button, Collapse, Row, Select} from 'antd'
 import {Col, Form, Input} from 'antd'
 
 import Modal from 'antd/lib/modal/Modal'
@@ -11,7 +11,7 @@ import {
   DashboardCellPlotType,
   PLOT_TYPES,
   DashboardCellPlotGauge,
-} from '.'
+} from '..'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 
 const labelCol = {xs: 8}
@@ -74,6 +74,9 @@ type CellEditProps = {
   onDone?: (l: DashboardLayoutDefiniton) => void
 }
 
+/** returns deep copy of anonymous object. Object must be acyclic */
+const copyOf = <T,>(obj: T) => JSON.parse(JSON.stringify(obj)) as T
+
 const fetchSvgKeys = async () =>
   (await (await fetch(`/api/dynamic/svgs`)).json()) as string[]
 
@@ -101,11 +104,16 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
   }, [editedCellIndex, layoutDefinition])
 
   const onOk = useCallback(() => {
-    if (!cell || editedCellIndex === undefined) return
-    const layoutCpy = JSON.parse(
-      JSON.stringify(layoutDefinition)
-    ) as DashboardLayoutDefiniton
+    if (!cell || editedCellIndex === undefined || !layoutDefinition) return
+    const layoutCpy = copyOf(layoutDefinition)
     layoutCpy.cells[editedCellIndex] = cell
+    onDone?.(layoutCpy)
+  }, [onDone, cell, layoutDefinition, editedCellIndex])
+
+  const onDelete = useCallback(() => {
+    if (editedCellIndex === undefined || !layoutDefinition) return
+    const layoutCpy = copyOf(layoutDefinition)
+    layoutCpy.cells.splice(editedCellIndex, 1)
     onDone?.(layoutCpy)
   }, [onDone, cell, layoutDefinition, editedCellIndex])
 
@@ -136,12 +144,30 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
     ></Select>
   )
 
+  const modalButtons = (
+    <>
+      <Button
+        onClick={onDelete}
+        danger
+        style={{display: 'inline-block', float: 'left'}}
+      >
+        Delete
+      </Button>
+      <Button onClick={onCancel}>Cancel</Button>
+      <Button onClick={onOk} type="primary">
+        Ok
+      </Button>
+      <div style={{clear: 'both'}}></div>
+    </>
+  )
+
   return (
     <>
       <Modal
         title="Edit cell"
         visible={typeof editedCellIndex === 'number'}
-        {...{onCancel, onOk}}
+        onCancel={onCancel}
+        footer={modalButtons}
       >
         <Form {...{labelCol, wrapperCol}}>
           <Form.Item label="type">
