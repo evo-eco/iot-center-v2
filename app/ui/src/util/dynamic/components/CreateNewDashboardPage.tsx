@@ -4,6 +4,10 @@ import {Card, Upload, Button, Input} from 'antd'
 import {FunctionComponent, useEffect, useState} from 'react'
 import Markdown from '../../Markdown'
 import Modal from 'antd/lib/modal/Modal'
+import {useCallback} from 'react'
+import {RcFile} from 'antd/lib/upload'
+import {useHistory} from 'react-router-dom'
+import * as path from 'path'
 
 export const DASHBOARD_SELECT_CREATE_NEW_OPTION = 'create new'
 
@@ -15,7 +19,8 @@ const upload = (name: string, text: string) =>
 
 export const CreateNewDashboardPage: FunctionComponent<{
   onEdit: () => void
-}> = ({onEdit}) => {
+  deviceId: string
+}> = ({onEdit, deviceId}) => {
   const [helpText, setHelpText] = useState('')
   useEffect(() => {
     // load markdown from file
@@ -40,14 +45,42 @@ export const CreateNewDashboardPage: FunctionComponent<{
 
   const [newPageName, setNewPageName] = useState<string>()
 
+  const history = useHistory()
+
+  const onFileUpload = useCallback((file: RcFile, FileList: RcFile[]) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const text = (e?.target?.result as string | undefined) ?? ''
+      await upload(file.name, text).then((x) => onEdit())
+      const ext = path.extname(file.name).substring(1)
+      const name = file.name.split('.').slice(0, -1).join('.')
+
+      if (ext === 'json')
+      // TODO: make this different. this way isn't stable
+        setTimeout(() => history.push(`/dynamic/${deviceId}/${name}`), 1000)
+    }
+    reader.readAsText(file)
+
+    // cancel default behaviour of file upload
+    return false
+  }, [])
+
   return (
     <>
       <Modal
         visible={typeof newPageName === 'string'}
         onCancel={() => setNewPageName(undefined)}
         onOk={() => {
-          upload(`${newPageName}.json`, `{"cells":[]}`).then(x=>onEdit())
-          setNewPageName(undefined)
+          if (newPageName === "") return;
+          upload(`${newPageName}.json`, `{"cells":[]}`).then(() => {
+            setNewPageName(undefined)
+            onEdit()
+            // TODO: make this different. this way isn't stable
+            setTimeout(
+              () => history.push(`/dynamic/${deviceId}/${newPageName}`),
+              1000
+            )
+          })
         }}
       >
         <Input
@@ -64,16 +97,7 @@ export const CreateNewDashboardPage: FunctionComponent<{
             <Upload
               accept=".json,.svg"
               multiple={true}
-              beforeUpload={(file) => {
-                const reader = new FileReader()
-                reader.onload = (e) => {
-                  const text = (e?.target?.result as string | undefined) ?? ''
-                  upload(file.name, text).then(x=>onEdit())
-                }
-                reader.readAsText(file)
-
-                return false
-              }}
+              beforeUpload={onFileUpload}
             >
               <Button icon={<UploadOutlined />}>Upload</Button>
             </Upload>

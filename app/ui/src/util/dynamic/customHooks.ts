@@ -1,11 +1,14 @@
-import { useState, useCallback, useEffect, useRef } from "react"
-import { DashboardLayoutDefiniton, fetchSvgString, getLayoutDefinitonFields } from "."
-import { asArray } from "../realtime"
+import {useState, useCallback, useEffect, useRef} from 'react'
+import {
+  DashboardLayoutDefiniton,
+  fetchSvgString,
+  getLayoutDefinitonFields,
+} from '.'
 
 export const useLoading = () => {
   const [loading, setLoading] = useState(false)
   const callWithLoading = useCallback(
-    async <T,>(fnc: () => Promise<T>): Promise<T> => {
+    async <T>(fnc: () => Promise<T>): Promise<T> => {
       try {
         setLoading(true)
         return await fnc()
@@ -16,10 +19,12 @@ export const useLoading = () => {
     []
   )
 
-  return { loading, callWithLoading, setLoading }
+  return {loading, callWithLoading, setLoading}
 }
 
-export const useFields = (layout: DashboardLayoutDefiniton | undefined): string[] => {
+export const useFields = (
+  layout: DashboardLayoutDefiniton | undefined
+): string[] => {
   const fieldsLayout = getLayoutDefinitonFields(layout)
   const [fields, setFields] = useState<string[]>([])
 
@@ -42,7 +47,7 @@ export const useSvgStrings = (requested: string[]): Record<string, string> => {
       try {
         const results = await Promise.all(
           requested.map(async (key) => {
-            const text = await fetchSvgString(key);
+            const text = await fetchSvgString(key)
             return [key, text] as const
           })
         )
@@ -63,9 +68,9 @@ export const useSvgStrings = (requested: string[]): Record<string, string> => {
 }
 
 export const useRefresh = () => {
-  const [refreshToken, setRefreshToken] = useState(0);
+  const [refreshToken, setRefreshToken] = useState(0)
   const refresh = useRef(() => {
-    setRefreshToken(r => (r === Date.now()) ? Date.now() + 1 : Date.now());
+    setRefreshToken((r) => (r === Date.now() ? Date.now() + 1 : Date.now()))
   }).current
-  return { refreshToken, refresh };
+  return {refreshToken, refresh}
 }

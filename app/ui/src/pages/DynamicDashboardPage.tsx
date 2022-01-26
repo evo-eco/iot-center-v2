@@ -63,11 +63,12 @@ import {
   CellEdit,
 } from '../util/dynamic/components'
 
+// TODO: renaming
+// TODO: unify naming - layout/dashboard name/key ...
 // TODO: escalations instead of console.error
 // TODO: file upload JSON definition of dashboardu with JSON schema for validation
 // TODO: svg upload with escape for script for secure usage
-// TODO: time component shows current server time
-// TODO: optional fields - defaults filling functions
+// TODO: time component that shows current server time
 // TODO: add comments to json schema
 
 /*
@@ -673,14 +674,12 @@ const DynamicDashboardPage: FunctionComponent<
   const layoutKey = match.params.dashboard ?? DASHBOARD_SELECT_CREATE_NEW_OPTION
 
   const {loading, callWithLoading} = useLoading()
-  const [isEditing, setIsEditing] = useState(false)
-  useEffect(() => {
-    setIsEditing(false)
-  }, [layoutKey])
-  const [message, setMessage] = useState<Message | undefined>()
   const {refreshToken: dataRefreshToken, refresh: refreshData} = useRefresh()
+  const [isEditing, setIsEditing] = useState(false)
+  const [message, setMessage] = useState<Message | undefined>()
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
+  const [editedCellIndex, setEditedCellIndex] = useState<number | undefined>()
 
   // Layout selection
   const {
@@ -692,66 +691,22 @@ const DynamicDashboardPage: FunctionComponent<
   const [laoutDefinitions, setLayoutDefinitions] = useState<
     Record<string, DashboardLayoutDefiniton>
   >({})
-
   const layoutDefinitionOriginal = laoutDefinitions[layoutKey || '']
-  const setLayoutDefinitionOriginal = useCallback((
-    key: string,
-    value: DashboardLayoutDefiniton
-  ) => setLayoutDefinitions((c) => ({...c, [key]: value})), [])
+  const [
+    layoutDefinition,
+    setLayoutDefinition,
+  ] = useState<DashboardLayoutDefiniton>(layoutDefinitionOriginal)
 
-  const [layoutDefinition, setLayoutDefinition] = useState<DashboardLayoutDefiniton>(
-    layoutDefinitionOriginal
+  const setLayoutDefinitionOriginal = useCallback(
+    (key: string, value: DashboardLayoutDefiniton) =>
+      setLayoutDefinitions((c) => ({...c, [key]: value})),
+    []
   )
-  useEffect(() => {
-    setLayoutDefinition(layoutDefinitionOriginal)
-  }, [layoutDefinitionOriginal])
-
-  // select first layout if none selected
-  useEffect(() => {
-    if (layoutKeys) {
-      if (match.params.dashboard === undefined && layoutKeys[0] !== undefined) {
-        history.replace(`/dynamic/${deviceId}/${layoutKeys[0]}`)
-      } else if (
-        !layoutKeys.some((x) => x === layoutKey) ||
-        layoutKey !== DASHBOARD_SELECT_CREATE_NEW_OPTION
-      ) {
-        history.replace(`/dynamic/${deviceId}/${layoutKeys[0]}`)
-      }
-    }
-  }, [match.params.dashboard, layoutKeys])
-
-  useEffect(() => {
-    const fetchLaoutKeys = async () => {
-      const keys = await fetchDashboardKeys()
-      setLayoutKeys(keys)
-      // setLayoutKey(keys[0])
-    }
-
-    callWithLoading(fetchLaoutKeys)
-  }, [callWithLoading, layoutKeyRefreshToken])
-
-  useEffect(() => {
-    const fetchLaoutConfig = async () => {
-      if (
-        !layoutKey ||
-        layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION ||
-        layoutDefinition
-      )
-        return
-      const config = await fetchDashboard(layoutKey)
-      setLayoutDefinitionOriginal(layoutKey, config);
-    }
-
-    callWithLoading(fetchLaoutConfig)
-  }, [layoutKey, layoutDefinition, callWithLoading])
 
   const isRealtime = getIsRealtime(timeStart)
-
   const fields = useFields(layoutDefinition)
-
   const svgKeys =
     layoutDefinition?.cells.filter(isDashboarCellSvg).map((x) => x.file) || []
-
   const svgStrings = useSvgStrings(svgKeys)
 
   const {loading: loadingSource, manager, availableFields} = useSource(
@@ -761,16 +716,61 @@ const DynamicDashboardPage: FunctionComponent<
     dataRefreshToken
   )
 
+  const [newName, setNewName] = useState('')
+
+  useEffect(() => {
+    if (isEditing) {
+      setNewName(layoutKey)
+    }
+  }, [isEditing])
+
+  useEffect(() => setIsEditing(false), [layoutKey])
+
+  useEffect(() => {
+    setLayoutDefinition(layoutDefinitionOriginal)
+  }, [layoutDefinitionOriginal])
+
+  // select first layout if none selected
+  useEffect(() => {
+    if (!layoutKeys) return
+    if (
+      // no param set
+      (match.params.dashboard === undefined && layoutKeys[0] !== undefined) ||
+      // selected key doesn't exist
+      !layoutKeys
+        .concat(DASHBOARD_SELECT_CREATE_NEW_OPTION)
+        .some((x) => x === layoutKey)
+    ) {
+      history.replace(`/dynamic/${deviceId}/${layoutKeys[0]}`)
+    }
+  }, [match.params.dashboard, layoutKeys])
+
+  useEffect(() => {
+    callWithLoading(async () => setLayoutKeys(await fetchDashboardKeys()))
+  }, [callWithLoading, layoutKeyRefreshToken])
+
+  useEffect(() => {
+    callWithLoading(async () => {
+      if (
+        !layoutKey ||
+        layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION ||
+        layoutDefinition
+      )
+        return
+      const config = await fetchDashboard(layoutKey)
+      setLayoutDefinitionOriginal(layoutKey, config)
+    })
+  }, [layoutKey, layoutDefinition, callWithLoading])
+
   // Default time selected to Past when mqtt not configured
   useEffect(() => {
-    if (mqttEnabled === false) {
-      setTimeStart(timeOptions[0].value)
-    }
+    if (mqttEnabled === false) setTimeStart(timeOptions[0].value)
   }, [mqttEnabled])
 
   useEffect(() => {
-    const fetchDevices = async () => {
+    callWithLoading(async () => {
       try {
+        // TODO: extract fetch (fallback) logic, apply to all fetch
         const response = await fetch('/api/devices')
         if (response.status >= 300) {
           const text = await response.text()
@@ -785,28 +785,28 @@ const DynamicDashboardPage: FunctionComponent<
           type: 'error',
         })
       }
-    }
-
-    callWithLoading(fetchDevices)
+    })
   }, [callWithLoading])
 
+  // TODO: for some reason reloads layout
+  const onEditCancel = useCallback(() => {
+    setLayoutDefinitionOriginal(layoutKey, layoutDefinitionOriginal)
+    setIsEditing(false)
+  }, [])
+
   const save = useCallback(() => {
-    ;(async () => {
+    callWithLoading(async () => {
       await uploadDashboard(layoutKey, layoutDefinition)
-      setLayoutDefinitionOriginal(layoutKey, layoutDefinition);
+      setLayoutDefinitionOriginal(layoutKey, layoutDefinition)
       setIsEditing(false)
-    })()
+    })
   }, [layoutDefinition, layoutDefinitionOriginal, layoutKey])
 
-  const [editedCellIndex, setEditedCellIndex] = useState<number | undefined>()
-
   const onDeleteDashboard = useCallback(() => {
-    const del = async () => {
+    callWithLoading(async () => {
       await deleteDashboard(layoutKey)
       refreshKeys()
-    }
-
-    del()
+    })
   }, [layoutKey])
 
   const pageControls = (
@@ -817,7 +817,7 @@ const DynamicDashboardPage: FunctionComponent<
           onChange={(key) => history.push(`/dynamic/${deviceId}/${key}`)}
           style={{minWidth: 100}}
           loading={loadingSource || mqttEnabled === undefined}
-          disabled={loadingSource}
+          disabled={loadingSource || isEditing}
         >
           {layoutKeys.map((key) => (
             <Select.Option key={key} value={key}>
@@ -909,11 +909,6 @@ const DynamicDashboardPage: FunctionComponent<
     </>
   )
 
-  const onEditCancel = useCallback(() => {
-    setLayoutDefinition(layoutDefinitionOriginal)
-    setIsEditing(false)
-  }, [])
-
   const unusedFields =
     layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION
       ? ''
@@ -932,6 +927,8 @@ const DynamicDashboardPage: FunctionComponent<
           onEditAccept={save}
           onEditCancel={onEditCancel}
           onDeleteDashboard={onDeleteDashboard}
+          newName={newName}
+          setNewName={setNewName}
         />
       }
       titleExtra={pageControls}
@@ -972,7 +969,7 @@ const DynamicDashboardPage: FunctionComponent<
       </DataManagerContextProvider>
 
       {layoutKey === DASHBOARD_SELECT_CREATE_NEW_OPTION ? (
-        <CreateNewDashboardPage onEdit={onEditLayoutKey} />
+        <CreateNewDashboardPage onEdit={onEditLayoutKey} {...{deviceId}} />
       ) : undefined}
     </PageContent>
   )

@@ -1,5 +1,5 @@
-import { DashboardLayoutDefiniton } from "."
-import { asArray } from "../realtime"
+import {DashboardLayoutDefiniton} from '.'
+import {asArray} from '../realtime'
 
 /**
  * returns fields for given layout
