@@ -16,6 +16,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "eslint .",
+    "lint:fix": "eslint . --fix",
     "mqtt_dev": "cross-env MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 nodemon index.js",
     "mqtt_subscriber": "cross-env MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 nodemon ./mqtt/subscriber.js",
     "mqtt_subscriber_broker": "nodemon ./mqtt/subscriber_broker.js"

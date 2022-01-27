@@ -16,7 +16,7 @@ export const fetchSvgString = (svgKey: string): Promise<string> =>
 export const uploadDashboard = (
   key: string,
   dashboard: string | DashboardLayoutDefiniton
-) =>
+): Promise<Response> =>
   fetch(`${URL}/upload/${key}.json`, {
     body:
       typeof dashboard === 'string'
@@ -25,5 +25,5 @@ export const uploadDashboard = (
     method: 'POST',
   })
 
-export const deleteDashboard = (dashboardKey: string) =>
+export const deleteDashboard = (dashboardKey: string): Promise<Response> =>
   fetch(`${URL}/dashboard/${dashboardKey}`, {method: 'DELETE'})

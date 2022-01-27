@@ -233,6 +233,7 @@ export class DataManager {
   get liveTimeWindow(): MinAndMax | undefined {
     if (this.retentionUsed)
       return {max: Date.now(), min: Date.now() - this.retentionTimeMs}
+    return undefined
   }
 
   public timeWindowRasterSize = 100
@@ -246,6 +247,7 @@ export class DataManager {
       const maxr = Math.ceil(max / r) * r
       return {min: minr, max: maxr}
     }
+    return undefined
   }
 
   applyRetentionOnData(): void {

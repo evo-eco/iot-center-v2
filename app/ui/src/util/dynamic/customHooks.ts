@@ -5,7 +5,11 @@ import {
   getLayoutDefinitonFields,
 } from '.'
 
-export const useLoading = () => {
+export const useLoading = (): {
+  loading: boolean
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>
+  callWithLoading: <T>(fnc: () => Promise<T>) => Promise<T>
+} => {
   const [loading, setLoading] = useState(false)
   const callWithLoading = useCallback(
     async <T>(fnc: () => Promise<T>): Promise<T> => {
@@ -67,7 +71,10 @@ export const useSvgStrings = (requested: string[]): Record<string, string> => {
   return svgStrings
 }
 
-export const useRefresh = () => {
+export const useRefresh = (): {
+  refreshToken: number
+  refresh: () => void
+} => {
   const [refreshToken, setRefreshToken] = useState(0)
   const refresh = useRef(() => {
     setRefreshToken((r) => (r === Date.now() ? Date.now() + 1 : Date.now()))

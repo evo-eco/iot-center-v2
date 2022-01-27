@@ -14,7 +14,8 @@ type TDynamicDashboardTitleProps = {
   onEditCancel: () => void
   onEditAccept: () => void
   onDeleteDashboard: () => void
-  newName: string, setNewName: (v: string) => void
+  // newName: string
+  // setNewName: (v: string) => void
 }
 
 export const DynamicDashboardTitle: React.FC<TDynamicDashboardTitleProps> = (
@@ -26,13 +27,15 @@ export const DynamicDashboardTitle: React.FC<TDynamicDashboardTitleProps> = (
     setIsEditing,
     onDeleteDashboard,
     onEditAccept,
-    onEditCancel,newName, setNewName
+    onEditCancel,
+    // newName,
+    // setNewName,
   } = props
 
   const editable = (
     <div style={{width: '100%'}}>
       {dashboardKey}{' '}
-{/*     
+      {/*     
       <Input
         value={newName}
         onChange={(e) => setNewName(e.target.value)}

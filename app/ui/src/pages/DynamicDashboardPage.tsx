@@ -241,7 +241,9 @@ const plotOptionsFor = (
 ) => {
   if (opts.plotType === 'gauge') return gaugesPlotOptionsFor(opts)
   if (opts.plotType === 'line') return linePlotOptionsFor(opts)
-  throw `Invalid plot cell type! ${JSON.stringify((opts as any)?.plotType)}`
+  throw new Error(
+    `Invalid plot cell type! ${JSON.stringify((opts as any)?.plotType)}`
+  )
 }
 
 // #region Realtime
@@ -716,13 +718,13 @@ const DynamicDashboardPage: FunctionComponent<
     dataRefreshToken
   )
 
-  const [newName, setNewName] = useState('')
+  // const [newName, setNewName] = useState('')
 
-  useEffect(() => {
-    if (isEditing) {
-      setNewName(layoutKey)
-    }
-  }, [isEditing])
+  // useEffect(() => {
+  //   if (isEditing) {
+  //     setNewName(layoutKey)
+  //   }
+  // }, [isEditing])
 
   useEffect(() => setIsEditing(false), [layoutKey])
 
@@ -743,7 +745,7 @@ const DynamicDashboardPage: FunctionComponent<
     ) {
       history.replace(`/dynamic/${deviceId}/${layoutKeys[0]}`)
     }
-  }, [match.params.dashboard, layoutKeys])
+  }, [match.params.dashboard, layoutKeys, deviceId, history, layoutKey])
 
   useEffect(() => {
     callWithLoading(async () => setLayoutKeys(await fetchDashboardKeys()))
@@ -760,7 +762,12 @@ const DynamicDashboardPage: FunctionComponent<
       const config = await fetchDashboard(layoutKey)
       setLayoutDefinitionOriginal(layoutKey, config)
     })
-  }, [layoutKey, layoutDefinition, callWithLoading])
+  }, [
+    layoutKey,
+    layoutDefinition,
+    setLayoutDefinitionOriginal,
+    callWithLoading,
+  ])
 
   // Default time selected to Past when mqtt not configured
   useEffect(() => {
@@ -792,7 +799,12 @@ const DynamicDashboardPage: FunctionComponent<
   const onEditCancel = useCallback(() => {
     setLayoutDefinitionOriginal(layoutKey, layoutDefinitionOriginal)
     setIsEditing(false)
-  }, [])
+  }, [
+    setLayoutDefinitionOriginal,
+    setIsEditing,
+    layoutDefinitionOriginal,
+    layoutKey,
+  ])
 
   const save = useCallback(() => {
     callWithLoading(async () => {
@@ -800,14 +812,19 @@ const DynamicDashboardPage: FunctionComponent<
       setLayoutDefinitionOriginal(layoutKey, layoutDefinition)
       setIsEditing(false)
     })
-  }, [layoutDefinition, layoutDefinitionOriginal, layoutKey])
+  }, [
+    callWithLoading,
+    setLayoutDefinitionOriginal,
+    layoutDefinition,
+    layoutKey,
+  ])
 
   const onDeleteDashboard = useCallback(() => {
     callWithLoading(async () => {
       await deleteDashboard(layoutKey)
       refreshKeys()
     })
-  }, [layoutKey])
+  }, [layoutKey, callWithLoading, refreshKeys])
 
   const pageControls = (
     <>
@@ -916,7 +933,7 @@ const DynamicDashboardPage: FunctionComponent<
 
   const onEditLayoutKey = useCallback(() => {
     refreshKeys()
-  }, [])
+  }, [refreshKeys])
 
   return (
     <PageContent
@@ -927,8 +944,8 @@ const DynamicDashboardPage: FunctionComponent<
           onEditAccept={save}
           onEditCancel={onEditCancel}
           onDeleteDashboard={onDeleteDashboard}
-          newName={newName}
-          setNewName={setNewName}
+          // newName={newName}
+          // setNewName={setNewName}
         />
       }
       titleExtra={pageControls}

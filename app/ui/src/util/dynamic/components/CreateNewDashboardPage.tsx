@@ -47,23 +47,26 @@ export const CreateNewDashboardPage: FunctionComponent<{
 
   const history = useHistory()
 
-  const onFileUpload = useCallback((file: RcFile, FileList: RcFile[]) => {
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const text = (e?.target?.result as string | undefined) ?? ''
-      await upload(file.name, text).then((x) => onEdit())
-      const ext = path.extname(file.name).substring(1)
-      const name = file.name.split('.').slice(0, -1).join('.')
+  const onFileUpload = useCallback(
+    (file: RcFile) => {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const text = (e?.target?.result as string | undefined) ?? ''
+        await upload(file.name, text).then(onEdit)
+        const ext = path.extname(file.name).substring(1)
+        const name = file.name.split('.').slice(0, -1).join('.')
 
-      if (ext === 'json')
-      // TODO: make this different. this way isn't stable
-        setTimeout(() => history.push(`/dynamic/${deviceId}/${name}`), 1000)
-    }
-    reader.readAsText(file)
+        if (ext === 'json')
+          // TODO: make this different. this way isn't stable
+          setTimeout(() => history.push(`/dynamic/${deviceId}/${name}`), 1000)
+      }
+      reader.readAsText(file)
 
-    // cancel default behaviour of file upload
-    return false
-  }, [])
+      // cancel default behaviour of file upload
+      return false
+    },
+    [deviceId, history, onEdit]
+  )
 
   return (
     <>
@@ -71,7 +74,7 @@ export const CreateNewDashboardPage: FunctionComponent<{
         visible={typeof newPageName === 'string'}
         onCancel={() => setNewPageName(undefined)}
         onOk={() => {
-          if (newPageName === "") return;
+          if (newPageName === '') return
           upload(`${newPageName}.json`, `{"cells":[]}`).then(() => {
             setNewPageName(undefined)
             onEdit()

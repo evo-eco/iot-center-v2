@@ -115,7 +115,7 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
     const layoutCpy = copyOf(layoutDefinition)
     layoutCpy.cells.splice(editedCellIndex, 1)
     onDone?.(layoutCpy)
-  }, [onDone, cell, layoutDefinition, editedCellIndex])
+  }, [onDone, layoutDefinition, editedCellIndex])
 
   const setCellProp = (prop: string, value: any) => {
     setCell((c) => c && {...c, [prop]: value})
