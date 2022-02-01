@@ -7,6 +7,7 @@ const proxy = require('express-http-proxy')
 const apis = require('./apis')
 const kafka = require('./kafka')
 const mqtt = require('./mqtt')
+const setupTimestreamBroker = require('./timestream/broker')
 const onboardInfluxDB = require('./influxdb/onboarding')
 const {logEnvironment, INFLUX_URL} = require('./env')
 const {monitorResponseTime, startProcessMonitoring} = require('./monitor')
@@ -64,6 +65,8 @@ async function startApplication() {
 
   // onboard a new InfluxDB instance
   await onboardInfluxDB()
+
+  await setupTimestreamBroker()
 
   // start monitoring node process
   startProcessMonitoring()

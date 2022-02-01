@@ -1,7 +1,15 @@
 /**
+ * @typedef {object} Point
+ * @property {string} measurement
+ * @property {string[]} tagPairs
+ * @property {Record<string, number>} fields
+ * @property {string} timestamp
+ */
+
+/**
  * Parses protocol lines into array of points having measurement, tagPairs, fields, timestamp fields
  * @param {string|Buffer} data input data
- * @returns arrays of points
+ * @returns {Point[]}
  */
 function parseProtocolLines(data) {
   if (typeof data !== 'string') data = String(data)
