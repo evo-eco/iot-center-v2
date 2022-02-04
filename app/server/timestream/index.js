@@ -1,83 +1,41 @@
-const AWS = require('aws-sdk')
-const https = require('https')
+const setupTimestreamBroker = require('./broker')
+const {queryTimestream} = require('./query')
 
-const AWS_CLIENT_REGION = 'us-east-2'
+/** @typedef {import('express').Router} Router */
 
-const agent = new https.Agent({
-  maxSockets: 5000,
-})
-
-const writeClient = new AWS.TimestreamWrite({
-  maxRetries: 10,
-  region: AWS_CLIENT_REGION,
-  httpOptions: {
-    timeout: 20000,
-    agent,
-  },
-})
-
-const constants = {
-  DATABASE_NAME: 'IoT-center-v2',
-  TABLE_NAME: 'Table1',
-}
-
-/** length of unix time with milliseconds precision */
-const MILLIS_TIME_LENGTH = 13
+const isSafeString = (str) => /^([a-zA-Z_\-0-9 ])*$/.test(str)
 
 /**
- * Transform timestamps to millis for point. (Points can have different precission)
- *
- * @param {string} timestamp
+ * @param {number} agoMS
+ * @param {string} clientId
  */
-const pointTimeToMillis = (timestamp) =>
-  timestamp.substring(0, MILLIS_TIME_LENGTH).padEnd(MILLIS_TIME_LENGTH, '0')
+const createQuery = (agoMS, clientId) => {
+  if (typeof agoMS !== 'number') throw new Error(`agoMS has to be number`)
+  if (!isSafeString(clientId))
+    throw new Error(`clientId contains unsafe sybols`)
 
-/**
- * @param {string} tagPair
- */
-const parseTagPair = (tagPair) => {
-  const splitted = tagPair.split('=')
-  const Name = splitted[0]
-  const Value = splitted.slice(1).join('=')
-  return {Name, Value}
+  return `SELECT measure_name, time, measure_value::double, measure_value::bigint FROM iot_center_v2.environment WHERE clientId = '${clientId}' AND time > ago(${agoMS}ms)`
 }
 
 /**
- * @param {Point} point
+ * @param {Router} router
  */
-const pointToAWSRecords = (point) =>
-  Object.entries(point.fields).map(([name, value]) => ({
-    Dimensions: point.tagPairs
-      .map(parseTagPair)
-      .concat({Name: 'measurement', Value: point.measurement}),
-    MeasureName: name,
-    MeasureValue: `${value}`,
-    MeasureValueType: 'DOUBLE',
-    Time: pointTimeToMillis(point.timestamp),
-  }))
+const startTimestreamEndpoint = async (router) => {
+  // TODO: invalid request
+  router.get('/timestream/query', async (req, res) => {
+    const agoTimeMSQ = req.query?.agoTimeMS ?? Number.NaN
+    const clientId = req.query?.clientId ?? ''
 
-/**
- * @param {Point[]} points
- */
-async function writePointsTimeStream(points) {
-  process.stdout.write(
-    `Writing ${points.length
-      .toString(10)
-      .padStart(6)} points to AWS Timestream\n`
-  )
+    const agoTimeMS = Number.isNaN(+agoTimeMSQ) ? 60 * 1000 : +agoTimeMSQ
 
-  const params = {
-    DatabaseName: constants.DATABASE_NAME,
-    TableName: constants.TABLE_NAME,
-    Records: points.flatMap(pointToAWSRecords),
-  }
+    const queryString = createQuery(agoTimeMS, clientId)
 
-  const request = writeClient.writeRecords(params)
+    const result = await queryTimestream(queryString)
 
-  await request.promise().then((x) => {
-    process.stdout.write(`Write done!\n`)
-    return x
+    res.json(result)
   })
+
+  await setupTimestreamBroker()
 }
 
-module.exports = writePointsTimeStream
+module.exports = startTimestreamEndpoint

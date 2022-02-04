@@ -1,7 +1,7 @@
 const {MQTT_TOPIC} = require('../env')
 const createClient = require('../mqtt/createClient')
 const parseLineProtocol = require('../mqtt/ws/lpParser')
-const writePointsTimeStream = require('.')
+const writePointsTimeStream = require("./write")
 
 /** @typedef {import("../mqtt/ws/lpParser.js").Point} Point */
 

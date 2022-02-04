@@ -20,6 +20,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import DashboardPage from './pages/DashboardPage'
 import RealTimePage from './pages/RealTimePage'
 import DynamicDashboardPage from './pages/DynamicDashboardPage'
+import TimestreamPage from "./pages/TimestreamPage"
 
 import {
   IconDashboard,
@@ -175,6 +176,9 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             <Menu.Item key="/dynamic/:device" icon={<IconDynamicDashboard />}>
               <NavLink to="/dynamic">Dynamic</NavLink>
             </Menu.Item>
+            <Menu.Item key="/timestream/:device" icon={<IconDynamicDashboard />}>
+              <NavLink to="/timestream">Timestream</NavLink>
+            </Menu.Item>
           </Menu>
         </Sider>
         <Switch>
@@ -223,6 +227,14 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
                 {...props}
                 {...{helpCollapsed, mqttEnabled}}
               />
+            )}
+          />
+          <Redirect exact from="/timestream" to={`/timestream/${VIRTUAL_DEVICE}`} />
+          <Route
+            exact
+            path="/timestream/:deviceId"
+            render={(props) => (
+              <TimestreamPage {...props} {...{helpCollapsed}} />
             )}
           />
           <Route path="*" component={NotFoundPage} />

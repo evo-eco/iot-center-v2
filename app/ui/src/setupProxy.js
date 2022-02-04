@@ -29,6 +29,13 @@ module.exports = function (app) {
       changeOrigin: true,
     })
   )
+  app.use(
+    '/timestream/query',
+    createProxyMiddleware({
+      target: 'http://localhost:5000',
+      changeOrigin: true,
+    })
+  )
   // app.use(
   //   '/mqtt',
   //   createProxyMiddleware({
