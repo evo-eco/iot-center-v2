@@ -1,10 +1,4 @@
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import React, {FunctionComponent, useEffect, useRef, useState} from 'react'
 import {RouteComponentProps} from 'react-router-dom'
 import PageContent, {Message} from './PageContent'
 import {
@@ -21,9 +15,6 @@ import {
 import {Line, Gauge, GaugeOptions, LineOptions} from '@antv/g2plot'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {IconRefresh, IconSettings, colorLink, colorPrimary} from '../styles'
-import {Table as GiraffeTable} from '@influxdata/giraffe'
-import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
-import {queryTable} from '../util/queryTable'
 import {
   DiagramEntryPoint,
   DataManager,
@@ -32,7 +23,6 @@ import {
 } from '../util/realtime'
 import {
   DataManagerContextProvider,
-  useWebSocket,
   ManagedComponentReact,
 } from '../util/realtime/react'
 import {DeviceInfo} from './DevicesPage'
@@ -40,37 +30,9 @@ import {VIRTUAL_DEVICE} from '../App'
 
 /*
  ********************************************
- * This page is adaptation of DashboardPage *
+ * This page is adaptation of RealtimePage *
  ********************************************
  */
-
-interface DeviceConfig {
-  influx_url: string
-  influx_org: string
-  influx_token: string
-  influx_bucket: string
-  id: string
-}
-
-interface DeviceData {
-  config: DeviceConfig
-  measurementsTable?: GiraffeTable
-}
-
-const fetchDeviceConfig = async (deviceId: string): Promise<DeviceConfig> => {
-  const response = await fetch(
-    `/api/env/${deviceId}?register=${deviceId === VIRTUAL_DEVICE}`
-  )
-  if (response.status >= 300) {
-    const text = await response.text()
-    throw new Error(`${response.status} ${text}`)
-  }
-  const deviceConfig: DeviceConfig = await response.json()
-  if (!deviceConfig.influx_token) {
-    throw new Error(`Device '${deviceId}' is not authorized!`)
-  }
-  return deviceConfig
-}
 
 type TimestreamMeasurement = {
   measure_name: string
@@ -89,13 +51,13 @@ const fetchDeviceTimestreamMeasurements = async (
   clientId: string,
   agoTimeMS: number
 ): Promise<DiagramEntryPoint[]> => {
-  console.log('/timestream/query?' +
-  new URLSearchParams({clientId, agoTimeMS} as any))
+  console.log(
+    '/timestream/query?' + new URLSearchParams({clientId, agoTimeMS} as any)
+  )
 
   const res = (await (
     await fetch(
-      '/timestream/query?' +
-        new URLSearchParams({clientId, agoTimeMS} as any)
+      '/timestream/query?' + new URLSearchParams({clientId, agoTimeMS} as any)
     )
   ).json()) as TimestreamMeasurement[]
 
@@ -142,8 +104,6 @@ const measurementsDefinitions: Record<string, MeasurementDefinition> = {
   },
 }
 const fields = Object.keys(measurementsDefinitions)
-const fieldsLatLon = ['Lat', 'Lon']
-const fieldsAll = fields.concat(...fieldsLatLon)
 
 /** gauges style based on mesurement definitions */
 const gaugesPlotOptions: Record<
@@ -234,120 +194,6 @@ const linePlotOptions: Record<
   ])
 )
 
-// #region Realtime
-
-/** Data returned from websocket in line-protocol-like shape */
-type RealtimePoint = {
-  measurement: string
-  tagPairs: string[]
-  fields: Record<string, number | boolean | string>
-  timestamp: string
-}
-type RealtimeSubscription = {
-  /** influxdb measurement value */
-  measurement: string
-  /** tag format 'tagName=tagValue'. Point is sent to client when matches all tags. */
-  tags: string[]
-}
-
-const HOST =
-  process.env.NODE_ENV === `development`
-    ? window.location.hostname + ':5000'
-    : window.location.host
-const WS_URL = `ws://${HOST}/mqtt`
-
-/** length of unix time with milliseconds precision */
-const MILLIS_TIME_LENGTH = 13
-/** Transform timestamps to millis for point. (Points can have different precission) */
-const pointTimeToMillis = (p: RealtimePoint): RealtimePoint => ({
-  ...p,
-  timestamp: p.timestamp
-    .substring(0, MILLIS_TIME_LENGTH)
-    .padEnd(MILLIS_TIME_LENGTH, '0'),
-})
-
-/**
- * subscribes for data to servers broker.js via websocket
- * when any subscription present
- */
-const useRealtimeData = (
-  subscriptions: RealtimeSubscription[],
-  onReceivePoints: (pts: RealtimePoint[]) => void
-) => {
-  const wsInit = useCallback<(ws: WebSocket) => void>(
-    (ws) => {
-      ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
-      ws.onmessage = (response) =>
-        onReceivePoints(
-          (JSON.parse(response.data) as RealtimePoint[]).map(pointTimeToMillis)
-        )
-    },
-    [subscriptions, onReceivePoints]
-  )
-  useWebSocket(wsInit, WS_URL, !!subscriptions.length)
-}
-
-// transformations for both InfluxDB and Realtime sources so we can use them same way independently of the source
-
-/** transformation for realtime data returned by websocket */
-const realtimePointToDiagrameEntryPoint = (points: RealtimePoint[]) => {
-  const newData: DiagramEntryPoint[] = []
-
-  for (const p of points) {
-    const fields = p.fields
-    const time = Math.floor(+p.timestamp)
-
-    for (const key in fields) {
-      const value = fields[key] as number
-      newData.push({key, time, value})
-    }
-  }
-
-  return newData
-}
-
-/** transformation for pivoted giraffe table */
-const giraffeTableToDiagramEntryPoints = (
-  table: GiraffeTable | undefined,
-  tags: string[]
-): DiagramEntryPoint[] => {
-  if (!table) return []
-  const length = table.length
-  const timeCol =
-    table.getColumn('_time', 'number') ||
-    table.getColumn('_start', 'number') ||
-    table.getColumn('_stop', 'number')
-  if (!timeCol) return []
-
-  const data: DiagramEntryPoint[] = Array(length * tags.length)
-
-  for (let j = tags.length; j--; ) {
-    const key = tags[j]
-    const valueCol = table.getColumn(key, 'number') as number[]
-    for (let i = length; i--; ) {
-      const value = valueCol?.[i]
-      const time = timeCol?.[i]
-      data[i + j * length] = {key, time, value}
-    }
-  }
-
-  {
-    let length = data.length
-    for (let i = data.length; i--; ) {
-      if (data[i].value == null || data[i].time == null) {
-        length--
-        data[i] = data[length]
-      }
-    }
-    data.length = length
-    data.sort((a, b) => a.time - b.time)
-  }
-
-  return data
-}
-
-// #endregion Realtime
-
 /**
  * definitions for time select. (Past options)
  */
@@ -368,16 +214,18 @@ const timeMsFromTimeOptions = (value: string): number => {
   const h = 60 * m
   const d = 24 * h
 
-  return [
-    {timeMs: 5 * m, value: '-5m'},
-    {timeMs: 15 * m, value: '-15m'},
-    {timeMs: 1 * h, value: '-1h'},
-    {timeMs: 6 * h, value: '-6h'},
-    {timeMs: 1 * d, value: '-1d'},
-    {timeMs: 3 * d, value: '-3d'},
-    {timeMs: 7 * d, value: '-7d'},
-    {timeMs: 30 * d, value: '-30d'},
-  ].find((x) => x.value === value)?.timeMs!
+  return (
+    [
+      {timeMs: 5 * m, value: '-5m'},
+      {timeMs: 15 * m, value: '-15m'},
+      {timeMs: 1 * h, value: '-1h'},
+      {timeMs: 6 * h, value: '-6h'},
+      {timeMs: 1 * d, value: '-1d'},
+      {timeMs: 3 * d, value: '-3d'},
+      {timeMs: 7 * d, value: '-7d'},
+      {timeMs: 30 * d, value: '-30d'},
+    ].find((x) => x.value === value)?.timeMs ?? 5 * m
+  )
 }
 
 interface PropsRoute {
@@ -395,15 +243,13 @@ const TimestreamPage: FunctionComponent<
   // loading is defaultly false because we don't load data when page load.
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<Message | undefined>()
-  const [deviceData, setDeviceData] = useState<DeviceData | undefined>()
   const [dataStamp, setDataStamp] = useState(0)
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptions[0].value)
 
   const manager = useRef(new DataManager()).current
 
-  const isVirtualDevice = deviceId === VIRTUAL_DEVICE
-  const measurementsTable = deviceData?.measurementsTable
+  // const isVirtualDevice = deviceId === VIRTUAL_DEVICE
 
   // unlike before, data don't have to be in react state.
 
@@ -428,11 +274,6 @@ const TimestreamPage: FunctionComponent<
 
   useEffect(clearData, [deviceId, clearData])
 
-  // On measurementsTable is changed, we render it in plots
-  useEffect(() => {
-    updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fieldsAll))
-  }, [measurementsTable, updateData, clearData])
-
   // #endregion realtime
 
   // fetch device configuration and data
@@ -444,13 +285,12 @@ const TimestreamPage: FunctionComponent<
       setLoading(true)
       clearData()
       try {
-        
         const table = await fetchDeviceTimestreamMeasurements(
           deviceId,
           timeMsFromTimeOptions(timeStart)
         )
         console.log(`timestream fetched data len ${table.length}`)
-        updateData(table);
+        updateData(table)
       } catch (e) {
         console.error(e)
         setMessage({
@@ -463,7 +303,7 @@ const TimestreamPage: FunctionComponent<
     }
 
     fetchData()
-  }, [dataStamp, deviceId, timeStart, clearData])
+  }, [dataStamp, deviceId, timeStart, updateData, clearData])
 
   useEffect(() => {
     const fetchDevices = async () => {

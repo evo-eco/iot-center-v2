@@ -11,7 +11,7 @@ const onboardInfluxDB = require('./influxdb/onboarding')
 const {logEnvironment, INFLUX_URL} = require('./env')
 const {monitorResponseTime, startProcessMonitoring} = require('./monitor')
 const {addWebSockets} = require('./ws')
-const startTimestreamEndpoint = require("./timestream")
+const startTimestreamEndpoint = require('./timestream')
 
 const UI_BUILD_DIR = path.join(__dirname, '..', 'ui', 'build')
 

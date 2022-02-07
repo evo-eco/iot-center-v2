@@ -1,4 +1,4 @@
-steps taken to integrate
+steps taken to integrate timestream into iot-center-v2
 
   - search for timestream, found official docs
   - directly go to code samples [write data](https://docs.aws.amazon.com/timestream/latest/developerguide/code-samples.write.html)

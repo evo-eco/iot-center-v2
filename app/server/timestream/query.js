@@ -185,7 +185,7 @@ function parseScalarType(scalarType, scalarValue) {
   throw new Error(`unknow scalar type ${tryStringify(scalarType)}`)
 }
 
-function parseTimeSeries(type, datum) {
+function parseTimeSeries(/* type, datum */) {
   throw new Error('parseTimeSeries not implemented')
   // const timeSeriesOutput = []
   // datum.TimeSeriesValue.forEach(function (dataPoint) {
@@ -200,7 +200,7 @@ function parseTimeSeries(type, datum) {
   // return `[${timeSeriesOutput.join(', ')}]`
 }
 
-function parseArray(arrayColumnInfo, arrayValues) {
+function parseArray(/* arrayColumnInfo, arrayValues */) {
   throw new Error('parseArray not implemented')
   // const arrayOutput = []
   // arrayValues.forEach(function (datum) {
