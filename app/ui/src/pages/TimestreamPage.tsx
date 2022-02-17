@@ -52,12 +52,13 @@ const fetchDeviceTimestreamMeasurements = async (
   agoTimeMS: number
 ): Promise<DiagramEntryPoint[]> => {
   console.log(
-    '/timestream/query?' + new URLSearchParams({clientId, agoTimeMS} as any)
+    '/api/timestream/query?' + new URLSearchParams({clientId, agoTimeMS} as any)
   )
 
   const res = (await (
     await fetch(
-      '/timestream/query?' + new URLSearchParams({clientId, agoTimeMS} as any)
+      '/api/timestream/query?' +
+        new URLSearchParams({clientId, agoTimeMS} as any)
     )
   ).json()) as TimestreamMeasurement[]
 

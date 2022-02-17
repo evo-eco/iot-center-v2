@@ -9,6 +9,7 @@ const {
   deleteAuthorization,
 } = require('../influxdb/authorizations')
 const dynamicRouter = require('../dynamic')
+const startTimestreamEndpoint = require('../timestream')
 const router = express.Router()
 function handleError(wrapped) {
   return async function (req, res, next) {
@@ -143,6 +144,8 @@ router.get(
 )
 
 router.use('/dynamic', dynamicRouter)
+
+startTimestreamEndpoint(router).catch((e) => console.error(JSON.stringify(e)))
 
 // all other routes are not supported!
 router.all('*', (_, res) => {
