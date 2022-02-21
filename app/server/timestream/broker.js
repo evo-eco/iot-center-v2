@@ -5,13 +5,13 @@ const writePointsTimeStream = require('./write')
 
 /** @typedef {import("../mqtt/ws/lpParser.js").Point} Point */
 
-const SENT_INTERVAL = 100
+// const SEND_INTERVAL = 10
 
-/**
- * wait given time of ms, resolve then
- * @param {number} ms
- */
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+// /**
+//  * wait given time of ms, resolve then
+//  * @param {number} ms
+//  */
+// const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** @returns {Point[]} */
 function parseLineProtocolWithTopic(topic, buffer) {
@@ -32,33 +32,33 @@ async function setupTimestreamBroker() {
   // subscribe to MQTT
   await client.subscribe(MQTT_TOPIC)
 
-  /** @type {Point[]} */
-  const batch = []
+  // /** @type {Point[]} */
+  // const batch = []
 
-  let timeoutRunning = false
+  // let timeoutRunning = false
 
-  const doWriteBatch = () => writePointsTimeStream(batch.splice(0))
+  // const doWriteBatch = () => writePointsTimeStream(batch.splice(0))
 
-  const batchWriteDone = () => {
-    timeoutRunning = false
-  }
+  // const batchWriteDone = () => {
+  //   timeoutRunning = false
+  // }
 
-  /** @param {Point[]} points */
-  const pushBatch = (points) => {
-    points.forEach((x) => batch.push(x))
-    if (!timeoutRunning) {
-      timeoutRunning = true
+  // /** @param {Point[]} points */
+  // const pushBatch = (points) => {
+  //   points.forEach((x) => batch.push(x))
+  //   if (!timeoutRunning) {
+  //     timeoutRunning = true
 
-      sleep(SENT_INTERVAL).then(doWriteBatch).finally(batchWriteDone)
-    }
-  }
+  //     sleep(SEND_INTERVAL).then(doWriteBatch).finally(batchWriteDone)
+  //   }
+  // }
 
   // route to web sockets
   client.on('message', function (topic, buffer) {
     try {
       const points = parseLineProtocolWithTopic(topic, buffer)
       if (!points || points.length === 0) return
-      pushBatch(points)
+      writePointsTimeStream(points)
     } catch (e) {
       process.stderr.write('Error while processing MQTT message ' + e + '\n')
     }

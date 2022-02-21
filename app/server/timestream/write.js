@@ -18,7 +18,7 @@ const writeClient = new AWS.TimestreamWrite({
 
 const constants = {
   DATABASE_NAME: 'iot_center_v2',
-  TABLE_NAME: 'Table1',
+  TABLE_NAME: 'environment',
 }
 
 /** length of unix time with milliseconds precision */

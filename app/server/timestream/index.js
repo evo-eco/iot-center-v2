@@ -14,7 +14,7 @@ const createQuery = (agoMS, clientId) => {
   if (!isSafeString(clientId))
     throw new Error(`clientId contains unsafe sybols`)
 
-  return `SELECT measure_name, time, measure_value::double, measure_value::bigint FROM iot_center_v2.environment WHERE clientId = '${clientId}' AND time > ago(${agoMS}ms)`
+  return `SELECT measure_name, time, measure_value::double FROM iot_center_v2.environment WHERE clientId = '${clientId}' AND time > ago(${agoMS}ms)`
 }
 
 /**
