@@ -4,6 +4,9 @@ const {INFLUX_BUCKET} = require('../env')
 const {getOrganization} = require('./organizations')
 const bucketsAPI = new BucketsAPI(influxdb)
 
+// a simple cache that contains buckets
+const bucketsCache = {}
+
 /**
  * Gets details for a bucket supplied by name.
  * @param {string} name bucket name, optional defaults to env.INFLUX_BUCKET
@@ -14,9 +17,16 @@ async function getBucket(name) {
   if (!name) {
     name = INFLUX_BUCKET
   }
+  if (bucketsCache[name]) {
+    return {...bucketsCache[name]}
+  }
   const {id: orgID} = await getOrganization()
   const buckets = await bucketsAPI.getBuckets({name: INFLUX_BUCKET, orgID})
-  return buckets.buckets[0]
+  const retVal = buckets.buckets[0]
+  if (retVal) {
+    bucketsCache[name] = {...retVal}
+  }
+  return retVal
 }
 
 /**
