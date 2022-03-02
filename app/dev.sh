@@ -16,6 +16,8 @@ export INFLUX_TOKEN=
 export INFLUX_ORG=
 # export MQTT_URL=mqtt://127.0.0.1:1883
 # export MQTT_TOPIC=iot_center
+# export SERVER_PORT=5000
+# export PORT=3000
 
 if [ "$1" = "mqtt" ]; then
   if [ "$(uname -s)" = "Darwin" ]; then

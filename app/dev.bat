@@ -12,6 +12,9 @@ SET INFLUX_TOKEN=
 SET INFLUX_ORG=
 REM SET MQTT_TOPIC=iot_center
 REM SET MQTT_URL=mqtt://127.0.0.1:1883
+REM SET SERVER_PORT=5000
+REM SET PORT=3000
+
 
 if [%1]==[mqtt] "C:\Program Files\Mosquitto\mosquitto.exe" -v
 if [%1]==[mqtt] exit
