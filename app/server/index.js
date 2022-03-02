@@ -69,7 +69,7 @@ async function startApplication() {
   startProcessMonitoring()
 
   // start HTTP server
-  const port = process.env.PORT || 5000
+  const port = process.env.SERVER_PORT || 5000
   app.listen(port, process.env.HOSTNAME || '0.0.0.0')
 
   logEnvironment()

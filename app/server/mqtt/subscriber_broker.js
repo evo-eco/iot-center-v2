@@ -24,4 +24,5 @@ client.on('connect', function (connection) {
   )
 })
 
-client.connect('ws://localhost:5000/mqtt')
+const port = process.env.SERVER_PORT || 5000
+client.connect(`ws://localhost:${port}/mqtt`)
