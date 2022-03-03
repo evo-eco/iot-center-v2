@@ -66,9 +66,6 @@ async function getIoTAuthorization(deviceId) {
 async function createIoTAuthorization(deviceId) {
   const {id: orgID} = await getOrganization()
   const bucketID = await getBucket(INFLUX_BUCKET).id
-  console.log(
-    `createIoTAuthorization: deviceId=${deviceId} orgID=${orgID} bucketID=${bucketID}`
-  )
   return await authorizationsAPI.postAuthorizations({
     body: {
       orgID,
@@ -94,6 +91,15 @@ async function createIoTAuthorization(deviceId) {
  */
 async function deleteAuthorization(key) {
   return authorizationsAPI.deleteAuthorizationsID({authID: key})
+}
+
+/**
+ * Gets authorization using a supplied InfluxDB key
+ * @param {string} key InfluxDB id of the authorization
+ * @return {Promise} promise with authorization, can be en arror
+ */
+async function getAuthorization(key) {
+  return authorizationsAPI.getAuthorizationsID({authID: key})
 }
 
 /**
@@ -130,9 +136,11 @@ function isBucketRWAuthorized(authorization, bucketId) {
 
 module.exports = {
   getAuthorizations,
+  getAuthorization,
   getDeviceId,
   getIoTAuthorizations,
   getIoTAuthorization,
   createIoTAuthorization,
   deleteAuthorization,
+  isBucketRWAuthorized,
 }
