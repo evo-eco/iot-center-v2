@@ -21,7 +21,7 @@ async function getBucket(name) {
     return {...bucketsCache[name]}
   }
   const {id: orgID} = await getOrganization()
-  const buckets = await bucketsAPI.getBuckets({name: INFLUX_BUCKET, orgID})
+  const buckets = await bucketsAPI.getBuckets({name, orgID})
   const retVal = buckets.buckets[0]
   if (retVal) {
     bucketsCache[name] = {...retVal}
@@ -42,7 +42,7 @@ async function createBucket(name) {
   const {id: orgID} = await getOrganization()
   return await bucketsAPI.postBuckets({
     body: {
-      name: INFLUX_BUCKET,
+      name,
       orgID,
       description: 'Created by IoT Center',
       retentionRules: [],
