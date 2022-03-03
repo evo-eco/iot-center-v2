@@ -5,7 +5,7 @@ const {getBucket} = require('./buckets')
 const {INFLUX_BUCKET} = require('../env')
 
 const authorizationsAPI = new AuthorizationsAPI(influxdb)
-const DESC_PREFIX = 'IoT Center: '
+const DESC_PREFIX = 'IoTCenterDevice: '
 
 /**
  * Gets all authorizations.
