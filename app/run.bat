@@ -9,6 +9,7 @@ SET INFLUX_ORG=<your email>
 
 REM SET MQTT_TOPIC=iot_center
 REM SET MQTT_URL=mqtt://localhost:1883
+REM SET SERVER_PORT=5000
 
 yarn install
 yarn build

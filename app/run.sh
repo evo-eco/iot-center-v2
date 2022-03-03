@@ -10,6 +10,7 @@ export INFLUX_ORG=
 
 # export MQTT_TOPIC=iot_center
 # export MQTT_URL=mqtt://localhost:1883
+# export SERVER_PORT=5000
 
 set -euo pipefail
 yarn install --frozen-lockfile
