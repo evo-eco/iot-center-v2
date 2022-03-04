@@ -1,5 +1,5 @@
 import React, {useState, useEffect, FunctionComponent} from 'react'
-import {InfluxDB, flux, Point} from '@influxdata/influxdb-client'
+import {InfluxDB, flux, Point} from '@influxdata/influxdb-client-browser'
 import {Tooltip, Button, Progress, notification} from 'antd'
 import {RouteComponentProps} from 'react-router-dom'
 import PageContent, {Message} from './PageContent'
