@@ -2,13 +2,17 @@ const express = require('express')
 const env = require('../env')
 const {stringify} = require('yaml')
 const {
-  getIoTAuthorization,
-  createIoTAuthorization,
-  getIoTAuthorizations,
-  getDeviceId,
-  deleteAuthorization,
-} = require('../influxdb/authorizations')
+  getDevices,
+  createDevice,
+  removeDeviceAuthorization,
+  createDeviceAuthorization,
+} = require('../influxdb/devices')
 const dynamicRouter = require('../dynamic')
+const {
+  getAuthorization,
+  isBucketRWAuthorized,
+} = require('../influxdb/authorizations')
+const {getBucket} = require('../influxdb/buckets')
 const router = express.Router()
 function handleError(wrapped) {
   return async function (req, res, next) {
@@ -55,11 +59,50 @@ router.get(
   '/env/:deviceId',
   handleError(async (req, res) => {
     const deviceId = req.params.deviceId
-    let authorization = await getIoTAuthorization(deviceId)
+    let device = (await getDevices(deviceId))[deviceId] || {}
     let registered = false
-    if (!authorization) {
+    let authorizationValid = !!device.key
+    if (authorizationValid) {
+      // validate that device authorization exists
+      let authorization
+      try {
+        authorization = await getAuthorization(device.key)
+      } catch (e) {
+        console.error(
+          `device=${deviceId} authorization ${device.key} does not exist!`,
+          e
+        )
+        authorizationValid = false
+      }
+      if (
+        authorization &&
+        !isBucketRWAuthorized(authorization, (await getBucket()).id)
+      ) {
+        console.warn(
+          `device=${deviceId} deleting authorization ${device.ket}, it does not grant access to ${env.INFLUX_BUCKET}!`
+        )
+        try {
+          authorization = await removeDeviceAuthorization(deviceId, device.key)
+        } catch (e) {
+          console.error(
+            `device=${deviceId} invalid authorization ${device.ket} cannot be deleted!`,
+            e
+          )
+        }
+        authorizationValid = false
+      }
+    }
+    if (!authorizationValid) {
       if (req.query.register !== 'false') {
-        authorization = await createIoTAuthorization(deviceId)
+        if (device.key) {
+          // recreate authorization if the present is invalid
+          const {id: key, token, updatedAt} = await createDeviceAuthorization(
+            deviceId
+          )
+          device = {...device, key, token, updatedAt}
+        } else {
+          device = await createDevice(deviceId)
+        }
         registered = true
       } else {
         res.status(403)
@@ -72,15 +115,15 @@ router.get(
     const result = {
       influx_url: env.INFLUX_URL,
       influx_org: env.INFLUX_ORG,
-      influx_token: authorization.token,
+      influx_token: device.token,
       influx_bucket: env.INFLUX_BUCKET,
       id: deviceId,
       default_lon: 14.4071543,
       default_lat: 50.0873254,
       measurement_interval: 60,
       newlyRegistered: registered,
-      createdAt: authorization.createdAt,
-      updatedAt: authorization.updatedAt,
+      createdAt: device.createdAt,
+      updatedAt: device.updatedAt,
       serverTime: new Date().toISOString(),
       configuration_refresh: env.configuration_refresh,
       write_endpoint: getDefaultWriteEndpoint(),
@@ -102,13 +145,11 @@ router.get(
 router.get(
   '/devices',
   handleError(async (_req, res) => {
-    const authorizations = await getIoTAuthorizations()
+    const devices = Object.values(await getDevices())
     res.json(
-      authorizations.map((a) => ({
-        key: a.id,
-        deviceId: getDeviceId(a),
-        createdAt: a.createdAt,
-      }))
+      devices
+        .filter((x) => x.deviceId && x.key) // ignore deleted or unknown devices
+        .sort((a, b) => a.deviceId.localeCompare(b.deviceId))
     )
   })
 )
@@ -118,14 +159,11 @@ router.delete(
   '/devices/:deviceId',
   handleError(async (req, res) => {
     const deviceId = req.params.deviceId
-    const authorizations = await getIoTAuthorizations()
-    for (const a of authorizations) {
-      if (getDeviceId(a) === deviceId) {
-        await deleteAuthorization(a.id)
-        res.status(204)
-        res.send('Device authorization removed')
-        return
-      }
+    const removed = await removeDeviceAuthorization(deviceId)
+    if (removed) {
+      res.status(204)
+      res.send('Device authorization removed')
+      return
     }
     res.status(404)
     res.send(`Device not found!`)

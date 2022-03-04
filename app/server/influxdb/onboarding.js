@@ -7,6 +7,7 @@ const {
   onboarding_username,
   onboarding_password,
   INFLUX_BUCKET,
+  INFLUX_BUCKET_DEVICES,
 } = require('../env')
 const {getBucket, createBucket} = require('./buckets')
 
@@ -27,29 +28,33 @@ async function onboardInfluxDB() {
       })
       console.log(`InfluxDB has been onboarded.`)
     }
-    let bucketNotFound = false
-    try {
-      await getBucket(INFLUX_BUCKET)
-      console.log(`Bucket '${INFLUX_BUCKET}' exists.`)
-    } catch (e) {
-      if (e instanceof HttpError && e.statusCode === 401) {
-        console.error(
-          `Unauthorized to determine whether a bucket '${INFLUX_BUCKET}' exists.`
-        )
-      } else if (e instanceof HttpError && e.statusCode === 404) {
-        // bucket not found
-        bucketNotFound = true
-      } else {
-        console.error(
-          `Unable to check whether a bucket '${INFLUX_BUCKET}' exists.`,
-          e
-        )
+    const initializeBucket = async (bucket) => {
+      let bucketNotFound = false
+      try {
+        await getBucket(bucket)
+        console.log(`Bucket '${bucket}' exists.`)
+      } catch (e) {
+        if (e instanceof HttpError && e.statusCode === 401) {
+          console.error(
+            `Unauthorized to determine whether a bucket '${bucket}' exists.`
+          )
+        } else if (e instanceof HttpError && e.statusCode === 404) {
+          // bucket not found
+          bucketNotFound = true
+        } else {
+          console.error(
+            `Unable to check whether a bucket '${bucket}' exists.`,
+            e
+          )
+        }
+      }
+      if (bucketNotFound) {
+        await createBucket(bucket)
+        console.log(`Bucket ${bucket} created.`)
       }
     }
-    if (bucketNotFound) {
-      await createBucket(INFLUX_BUCKET)
-      console.log(`Bucket ${INFLUX_BUCKET} created.`)
-    }
+    await initializeBucket(INFLUX_BUCKET)
+    await initializeBucket(INFLUX_BUCKET_DEVICES)
   } catch (error) {
     console.error(
       `Unable to determine whether InfluxDB at ${INFLUX_URL} is onboarded.`,

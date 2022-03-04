@@ -6,6 +6,8 @@ const INFLUX_TOKEN = process.env.INFLUX_TOKEN || 'my-token'
 const INFLUX_ORG = process.env.INFLUX_ORG || 'my-org'
 /** InfluxDB bucket  */
 const INFLUX_BUCKET = 'iot_center'
+/** InfluxDB bucket that stores registered devices  */
+const INFLUX_BUCKET_DEVICES = 'iot_center_devices'
 
 /** optional Kafka Host */
 const KAFKA_HOST = process.env.KAFKA_HOST
@@ -66,6 +68,7 @@ module.exports = {
   onboarding_password,
   configuration_refresh,
   INFLUX_BUCKET,
+  INFLUX_BUCKET_DEVICES,
   logEnvironment,
   KAFKA_HOST,
   KAFKA_TOPIC,
