@@ -91,6 +91,8 @@ interface Props {
   helpCollapsed: boolean
 }
 
+const deviceTableRowKey = (r: any) => r.deviceId
+
 const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<Message | undefined>(undefined)
@@ -298,7 +300,11 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
         </>
       }
     >
-      <Table dataSource={data} columns={columnDefinitions}></Table>
+      <Table
+        dataSource={data}
+        columns={columnDefinitions}
+        rowKey={deviceTableRowKey}
+      />
     </PageContent>
   )
 }
