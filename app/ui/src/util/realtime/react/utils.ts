@@ -8,7 +8,6 @@ export const useWebSocket = (
   const wsRef = useRef<WebSocket>()
 
   const startListening = useCallback(() => {
-    console.log('starting WebSocket')
     wsRef.current = new WebSocket(url)
     callback(wsRef.current)
   }, [callback, url])

@@ -69,7 +69,9 @@ router.get(
         authorization = await getAuthorization(device.key)
       } catch (e) {
         console.error(
-          `device=${deviceId} authorization ${device.key} does not exist!`,
+          'device=%s authorization %s does not exist!',
+          deviceId,
+          device.key,
           e
         )
         authorizationValid = false
@@ -79,13 +81,18 @@ router.get(
         !isBucketRWAuthorized(authorization, (await getBucket()).id)
       ) {
         console.warn(
-          `device=${deviceId} deleting authorization ${device.ket}, it does not grant access to ${env.INFLUX_BUCKET}!`
+          'device=%s deleting authorization %s, it does not grant access to %s!',
+          deviceId,
+          device.key,
+          env.INFLUX_BUCKET
         )
         try {
           authorization = await removeDeviceAuthorization(deviceId, device.key)
         } catch (e) {
           console.error(
-            `device=${deviceId} invalid authorization ${device.ket} cannot be deleted!`,
+            'device=%s invalid authorization %s cannot be deleted!',
+            deviceId,
+            device.key,
             e
           )
         }
@@ -96,9 +103,11 @@ router.get(
       if (req.query.register !== 'false') {
         if (device.key) {
           // recreate authorization if the present is invalid
-          const {id: key, token, updatedAt} = await createDeviceAuthorization(
-            deviceId
-          )
+          const {
+            id: key,
+            token,
+            updatedAt,
+          } = await createDeviceAuthorization(deviceId)
           device = {...device, key, token, updatedAt}
         } else {
           device = await createDevice(deviceId)

@@ -6,6 +6,7 @@
 const express = require('express')
 const path = require('path')
 const fs = require('fs')
+const sanitize = require('sanitize-filename')
 
 const router = express.Router()
 
@@ -22,11 +23,9 @@ const router = express.Router()
 const DIR_USER_DATA = path.join(__dirname, '../../../data')
 const DIR_DYNAMIC_DASHBOARDS = path.join(DIR_USER_DATA, 'dynamic')
 
-/**
- * @param {string} logLabel
- * @param {string} path
- * @param {()=>void} [callback]
- */
+//////////////////////
+// Filesystem store //
+//////////////////////
 const createDir = (logLabel, path, callback) => {
   fs.stat(path, (e, stat) => {
     if (stat?.isDirectory?.()) {
@@ -73,9 +72,53 @@ createDir('data', DIR_USER_DATA, () => {
   })
 })
 
-router.get('/keys', (_req, res) => {
+// implement simple caching to avoid frequest fs access
+let FILE_CACHE = {}
+fs.watch(DIR_DYNAMIC_DASHBOARDS, {}, () => (FILE_CACHE = {}))
+
+function listFiles(callback) {
+  if (FILE_CACHE.listFiles) {
+    callback(...FILE_CACHE.listFiles)
+    return
+  }
   fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
-    if (e) return
+    FILE_CACHE.listFiles = [e, files]
+    callback(e, files)
+  })
+}
+
+function readFile(key, extension, callback) {
+  const file = sanitize(key + extension)
+  if (FILE_CACHE.readFile && FILE_CACHE.readFile[file]) {
+    callback(...FILE_CACHE.readFile[file])
+    return
+  }
+  fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), (e, data) => {
+    ;(FILE_CACHE.readFile || (FILE_CACHE.readFile = {}))[file] = [e, data]
+    callback(e, data ? data.toString('utf-8') : undefined)
+  })
+}
+
+function deleteFile(key, extension, callback) {
+  const file = sanitize(key + extension)
+  fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, file), callback)
+}
+
+function writeFile(key, extension, body, callback) {
+  const file = sanitize(key + extension)
+  fs.writeFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), body, {}, callback)
+}
+
+//////////////////////
+// Router endpoints //
+//////////////////////
+router.get('/keys', (_req, res) => {
+  listFiles((e, files) => {
+    if (e) {
+      console.error(e)
+      res.sendStatus(500)
+      return
+    }
     const dashboards = files
       .filter((f) => f.endsWith('.json'))
       .map((d) => d.split('.').slice(0, -1).join('.'))
@@ -85,8 +128,12 @@ router.get('/keys', (_req, res) => {
 })
 
 router.get('/svgs', (_req, res) => {
-  fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
-    if (e) return
+  listFiles((e, files) => {
+    if (e) {
+      console.error(e)
+      res.sendStatus(500)
+      return
+    }
     const svgs = files
       .filter((f) => f.endsWith('.svg'))
       .map((d) => d.split('.').slice(0, -1).join('.'))
@@ -97,30 +144,25 @@ router.get('/svgs', (_req, res) => {
 router.get('/dashboard/:key', (req, res) => {
   const key = req.params.key
 
-  fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, key + '.json'), (e, data) => {
+  readFile(key, '.json', (e, text) => {
     if (e) {
       console.error(e)
       res.status(404)
-      res.send(`Dynamic dashboard ${key} not found!`)
+      res.send(`Dynamic dashboard not found!`)
       return
     }
-
-    const text = data.toString('utf-8')
     res.send(text)
   })
 })
 
-const pathForDashboard = (key) =>
-  path.join(DIR_DYNAMIC_DASHBOARDS, key + '.json')
-
 router.delete('/dashboard/:key', (req, res) => {
   const key = req.params.key
 
-  fs.unlink(pathForDashboard(key), (e) => {
+  deleteFile(key, '.json', (e) => {
     if (e) {
       console.error(e)
       res.status(500)
-      res.send(`Failed to delete ${key}!`)
+      res.send(`Failed to delete dashboard!`)
       return
     }
 
@@ -128,20 +170,16 @@ router.delete('/dashboard/:key', (req, res) => {
   })
 })
 
-// svg should contain xmlns="http://www.w3.org/2000/svg"
-
 router.get('/svg/:key', (req, res) => {
   const key = req.params.key
 
-  fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, key + '.svg'), (e, data) => {
+  readFile(key, '.svg', (e, text) => {
     if (e) {
       console.error(e)
       res.status(404)
-      res.send(`Svg ${key} not found!`)
+      res.send(`Svg not found!`)
       return
     }
-
-    const text = data.toString('utf-8')
     res.send(text)
   })
 })
@@ -156,10 +194,16 @@ router.use(express.text({limit: '10mb'}))
 router.post('/upload/:name', (req, res) => {
   const {name} = req.params
   if (name && (name.endsWith('.svg') || name.endsWith('.json'))) {
-    fs.writeFile(path.join(DIR_DYNAMIC_DASHBOARDS, name), req.body, {}, (e) => {
-      if (e) console.error(e)
-      res.status(!e ? 200 : 500).send('')
-    })
+    const extSep = name.lastIndexOf('.')
+    writeFile(
+      name.substring(0, extSep),
+      name.substring(extSep),
+      req.body,
+      (e) => {
+        if (e) console.error(e)
+        res.sendStatus(!e ? 200 : 500)
+      }
+    )
   } else {
     res.status(400)
     res.text('invalid filename or extension')
