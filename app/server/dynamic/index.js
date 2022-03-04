@@ -73,6 +73,9 @@ createDir('data', DIR_USER_DATA, () => {
   })
 })
 
+//////////////////////
+// Router endpoints //
+//////////////////////
 router.get('/keys', (_req, res) => {
   fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
     if (e) return
@@ -110,13 +113,10 @@ router.get('/dashboard/:key', (req, res) => {
   })
 })
 
-const pathForDashboard = (key) =>
-  path.join(DIR_DYNAMIC_DASHBOARDS, key + '.json')
-
 router.delete('/dashboard/:key', (req, res) => {
   const key = req.params.key
 
-  fs.unlink(pathForDashboard(key), (e) => {
+  fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, key + '.json'), (e) => {
     if (e) {
       console.error(e)
       res.status(500)
