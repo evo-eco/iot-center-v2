@@ -731,7 +731,7 @@ const DynamicDashboardPage: FunctionComponent<
 
   // select first layout if none selected
   useEffect(() => {
-    if (!layoutKeys) return
+    if (!layoutKeys || !layoutKeys.length) return
     if (
       // no param set
       (match.params.dashboard === undefined && layoutKeys[0] !== undefined) ||
