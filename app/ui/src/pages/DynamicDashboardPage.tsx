@@ -683,20 +683,16 @@ const DynamicDashboardPage: FunctionComponent<
   const [editedCellIndex, setEditedCellIndex] = useState<number | undefined>()
 
   // Layout selection
-  const {
-    refreshToken: layoutKeyRefreshToken,
-    refresh: refreshKeys,
-  } = useRefresh()
+  const {refreshToken: layoutKeyRefreshToken, refresh: refreshKeys} =
+    useRefresh()
   const [layoutKeys, setLayoutKeys] = useState<string[]>([])
   // const [layoutKey, setLayoutKey] = useState<string>()
   const [laoutDefinitions, setLayoutDefinitions] = useState<
     Record<string, DashboardLayoutDefiniton>
   >({})
   const layoutDefinitionOriginal = laoutDefinitions[layoutKey || '']
-  const [
-    layoutDefinition,
-    setLayoutDefinition,
-  ] = useState<DashboardLayoutDefiniton>(layoutDefinitionOriginal)
+  const [layoutDefinition, setLayoutDefinition] =
+    useState<DashboardLayoutDefiniton>(layoutDefinitionOriginal)
 
   const setLayoutDefinitionOriginal = useCallback(
     (key: string, value: DashboardLayoutDefiniton) =>
@@ -710,12 +706,11 @@ const DynamicDashboardPage: FunctionComponent<
     layoutDefinition?.cells.filter(isDashboarCellSvg).map((x) => x.file) || []
   const svgStrings = useSvgStrings(svgKeys)
 
-  const {loading: loadingSource, manager, availableFields} = useSource(
-    deviceId,
-    timeStart,
-    fields,
-    dataRefreshToken
-  )
+  const {
+    loading: loadingSource,
+    manager,
+    availableFields,
+  } = useSource(deviceId, timeStart, fields, dataRefreshToken)
 
   // const [newName, setNewName] = useState('')
 

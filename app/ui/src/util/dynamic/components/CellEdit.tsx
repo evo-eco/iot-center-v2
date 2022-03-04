@@ -125,15 +125,15 @@ export const CellEdit: FunctionComponent<CellEditProps> = ({
     setCellProp(prop, value)
   }
 
-  const callbackHtmlEvent = (prop: string, isNumber = false) => (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (!isNumber) setCellProp(prop, e.target.value)
-    else {
-      const number = +e.target.value
-      setCellProp(prop, Number.isNaN(number) ? 0 : number)
+  const callbackHtmlEvent =
+    (prop: string, isNumber = false) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!isNumber) setCellProp(prop, e.target.value)
+      else {
+        const number = +e.target.value
+        setCellProp(prop, Number.isNaN(number) ? 0 : number)
+      }
     }
-  }
 
   const fieldsSelect = (
     <Select

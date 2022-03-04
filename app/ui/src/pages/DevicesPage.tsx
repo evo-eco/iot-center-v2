@@ -199,8 +199,9 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
       title: 'Last Entry',
       dataIndex: 'deviceId',
       render: (id: string) => {
-        const lastEntry = lastEntries.find(({deviceId}) => deviceId === id)
-          ?.lastEntry
+        const lastEntry = lastEntries.find(
+          ({deviceId}) => deviceId === id
+        )?.lastEntry
         if (lastEntry != null && lastEntry !== 0)
           return timeFormatter({
             timeZone: 'UTC',
