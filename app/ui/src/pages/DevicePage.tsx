@@ -247,6 +247,8 @@ async function writeEmulatedData(
   return pointsWritten
 }
 
+const measurementTableRowKey = (r: any) => r._field
+
 interface PropsRoute {
   deviceId?: string
 }
@@ -483,6 +485,7 @@ const DevicePage: FunctionComponent<
         dataSource={deviceData?.measurements}
         columns={columnDefinitions}
         pagination={false}
+        rowKey={measurementTableRowKey}
       />
       <div style={{height: 20}} />
       {isVirtualDevice && mqttEnabled ? (
