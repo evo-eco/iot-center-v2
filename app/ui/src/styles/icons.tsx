@@ -1,14 +1,14 @@
 import React from 'react'
 import Icon from '@ant-design/icons'
 
-import {ReactComponent as DashboardSvg} from './icons/dashboard.svg'
-import {ReactComponent as DeleteSvg} from './icons/delete.svg'
-import {ReactComponent as SettingsSvg} from './icons/settings.svg'
-import {ReactComponent as DeviceRegistrationSvg} from './icons/deviceRegistration.svg'
-import {ReactComponent as HomeSvg} from './icons/home.svg'
-import {ReactComponent as VirtualDeviceSvg} from './icons/virtualDevice.svg'
-import {ReactComponent as RefreshSvg} from './icons/refresh.svg'
-import {ReactComponent as WriteDataSvg} from './icons/writeData.svg'
+import DashboardSvg from './icons/dashboard.svg?component'
+import DeleteSvg from './icons/delete.svg?component'
+import SettingsSvg from './icons/settings.svg?component'
+import DeviceRegistrationSvg from './icons/deviceRegistration.svg?component'
+import HomeSvg from './icons/home.svg?component'
+import VirtualDeviceSvg from './icons/virtualDevice.svg?component'
+import RefreshSvg from './icons/refresh.svg?component'
+import WriteDataSvg from './icons/writeData.svg?component'
 
 export const IconDashboard: React.FC = () => <Icon component={DashboardSvg} />
 export const IconDelete: React.FC = () => <Icon component={DeleteSvg} />

@@ -29,7 +29,8 @@
     "react-leaflet-ant-path": "^1.1.0",
     "react-markdown": "^4.3.1",
     "react-router-dom": "^5.2.0",
-    "react-syntax-highlighter": "^15.4.2"
+    "react-syntax-highlighter": "^15.4.2",
+    "vite-plugin-env-compatible": "^1.1.1"
   },
   "scripts": {
     "start": "cross-env REACT_APP_SERVER_PORT=$SERVER_PORT craco start",
@@ -54,6 +55,7 @@
     ]
   },
   "devDependencies": {
+    "@honkhonk/vite-plugin-svgr": "^1.1.0",
     "@influxdata/influxdb-client": "^1.23.0",
     "@types/leaflet": "^1.5.21",
     "@types/react-router-dom": "^5.1.5",
