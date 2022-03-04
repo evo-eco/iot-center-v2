@@ -96,9 +96,11 @@ router.get(
       if (req.query.register !== 'false') {
         if (device.key) {
           // recreate authorization if the present is invalid
-          const {id: key, token, updatedAt} = await createDeviceAuthorization(
-            deviceId
-          )
+          const {
+            id: key,
+            token,
+            updatedAt,
+          } = await createDeviceAuthorization(deviceId)
           device = {...device, key, token, updatedAt}
         } else {
           device = await createDevice(deviceId)
