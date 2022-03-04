@@ -71,11 +71,64 @@ createDir('data', DIR_USER_DATA, () => {
   })
 })
 
+function validateKey(key) {
+  if (key.includes('.') || !key.includes('/') || !key.includes('\\')) {
+    throw new Error('key cannot contain . / or \\')
+  }
+}
+
+function listFiles(callback) {
+  fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
+    callback(e, files)
+  })
+}
+
+function readFile(key, extension, callback) {
+  try {
+    validateKey(key)
+    fs.readFile(
+      path.join(DIR_DYNAMIC_DASHBOARDS, key + extension),
+      (e, data) => {
+        callback(e, data)
+      }
+    )
+  } catch (e) {
+    callback(e)
+  }
+}
+
+function deleteFile(key, extension, callback) {
+  try {
+    validateKey(key)
+    fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, key + extension), (e) => {
+      callback(e)
+    })
+  } catch (e) {
+    callback(e)
+  }
+}
+
+function writeFile(key, extension, body, callback) {
+  try {
+    validateKey(key)
+    fs.writeFile(
+      path.join(DIR_DYNAMIC_DASHBOARDS, key + extension),
+      body,
+      {},
+      (e) => {
+        callback(e)
+      }
+    )
+  } catch (e) {
+    callback(e)
+  }
+}
+
 //////////////////////
 // Router endpoints //
 //////////////////////
 router.get('/keys', (_req, res) => {
-  fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
+  listFiles((e, files) => {
     if (e) {
       console.error(e)
       res.sendStatus(500)
@@ -90,7 +143,7 @@ router.get('/keys', (_req, res) => {
 })
 
 router.get('/svgs', (_req, res) => {
-  fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
+  listFiles((e, files) => {
     if (e) {
       console.error(e)
       res.sendStatus(500)
@@ -106,7 +159,7 @@ router.get('/svgs', (_req, res) => {
 router.get('/dashboard/:key', (req, res) => {
   const key = req.params.key
 
-  fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, key + '.json'), (e, data) => {
+  readFile(key, '.json', (e, data) => {
     if (e) {
       console.error(e)
       res.status(404)
@@ -122,7 +175,7 @@ router.get('/dashboard/:key', (req, res) => {
 router.delete('/dashboard/:key', (req, res) => {
   const key = req.params.key
 
-  fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, key + '.json'), (e) => {
+  deleteFile(key, '.json', (e) => {
     if (e) {
       console.error(e)
       res.status(500)
@@ -137,7 +190,7 @@ router.delete('/dashboard/:key', (req, res) => {
 router.get('/svg/:key', (req, res) => {
   const key = req.params.key
 
-  fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, key + '.svg'), (e, data) => {
+  readFile(key, '.svg', (e, data) => {
     if (e) {
       console.error(e)
       res.status(404)
@@ -160,10 +213,16 @@ router.use(express.text({limit: '10mb'}))
 router.post('/upload/:name', (req, res) => {
   const {name} = req.params
   if (name && (name.endsWith('.svg') || name.endsWith('.json'))) {
-    fs.writeFile(path.join(DIR_DYNAMIC_DASHBOARDS, name), req.body, {}, (e) => {
-      if (e) console.error(e)
-      res.status(!e ? 200 : 500).send('')
-    })
+    const extSep = name.lastIndexOf('.')
+    writeFile(
+      name.substring(0, extSep),
+      name.substring(extSep),
+      req.body,
+      (e) => {
+        if (e) console.error(e)
+        res.sendStatus(!e ? 200 : 500)
+      }
+    )
   } else {
     res.status(400)
     res.text('invalid filename or extension')
