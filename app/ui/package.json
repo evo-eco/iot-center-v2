@@ -35,7 +35,7 @@
   "scripts": {
     "start": "cross-env REACT_APP_SERVER_PORT=$SERVER_PORT vite",
     "build": "vite build",
-    "test": "yarn lint && craco test",
+    "test": "yarn lint && jest --passWithNoTests",
     "lint": "eslint src/**/*.ts{,x}",
     "lint:fix": "eslint src/**/*.ts{,x} --fix"
   },
@@ -74,6 +74,7 @@
     "jest": "^27.5.1",
     "nock": "^13.0.4",
     "prettier": "^2.1.1",
+    "ts-jest": "^27.1.3",
     "typescript": "~3.7.2",
     "vite": "^2.8.6"
   }

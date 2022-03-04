@@ -4,7 +4,11 @@ import envCompatible from 'vite-plugin-env-compatible'
 import svgLoader from '@honkhonk/vite-plugin-svgr'
 
 export default defineConfig({
-  plugins: [react(), svgLoader(), envCompatible({prefix: 'REACT_APP'})],
+  plugins: [
+    react({fastRefresh: process.env.NODE_ENV !== 'test'}),
+    svgLoader(),
+    envCompatible({prefix: 'REACT_APP'}),
+  ],
   css: {
     preprocessorOptions: {
       less: {
