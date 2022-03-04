@@ -12,7 +12,7 @@ const {logEnvironment, INFLUX_URL} = require('./env')
 const {monitorResponseTime, startProcessMonitoring} = require('./monitor')
 const {addWebSockets} = require('./ws')
 
-const UI_BUILD_DIR = path.join(__dirname, '..', 'ui', 'build')
+const UI_BUILD_DIR = path.join(__dirname, '..', 'ui', 'dist')
 
 // terminate on DTRL+C or CTRL+D
 process.on('SIGINT', () => process.exit())
