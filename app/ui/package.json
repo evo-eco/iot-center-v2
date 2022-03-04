@@ -33,7 +33,7 @@
     "vite-plugin-env-compatible": "^1.1.1"
   },
   "scripts": {
-    "start": "cross-env REACT_APP_SERVER_PORT=$SERVER_PORT vite",
+    "start": "cross-env REACT_APP_SERVER_PORT=$SERVER_PORT vite --open",
     "build": "vite build",
     "test": "yarn lint && jest --passWithNoTests",
     "lint": "eslint src/**/*.ts{,x}",
