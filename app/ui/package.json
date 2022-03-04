@@ -70,7 +70,6 @@
     "eslint-plugin-prettier": "^3.1.4",
     "eslint-plugin-react": "^7.29.3",
     "eslint-plugin-react-hooks": "^4.2.0",
-    "http-proxy-middleware": "^2.0.1",
     "jest": "^27.5.1",
     "nock": "^13.0.4",
     "prettier": "^2.1.1",
