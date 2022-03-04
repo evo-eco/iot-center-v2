@@ -67,8 +67,8 @@ export class ManagedMap extends ManagedComponent {
     this._path.setLatLngs(_points as any)
 
     if (_points.length) {
-      const last = (_points[_points.length - 1] as any) as LatLng
-      const last2 = (_points[_points.length - 2] as any) as LatLng
+      const last = _points[_points.length - 1] as any as LatLng
+      const last2 = _points[_points.length - 2] as any as LatLng
       try {
         if (
           !this._lastPoint ||

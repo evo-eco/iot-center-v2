@@ -69,14 +69,12 @@ export const simplify = (
   const xMinAndMax = getMinAndMax(xs)
   const yMinAndMax = getMinAndMax(ys)
 
-  const [
-    xsSimplifiedNormalized,
-    ysSimplifiedNormalized,
-  ] = simplifyForNormalizedData(
-    normalize(xs, xMinAndMax),
-    normalize(ys, yMinAndMax),
-    epsilon
-  )
+  const [xsSimplifiedNormalized, ysSimplifiedNormalized] =
+    simplifyForNormalizedData(
+      normalize(xs, xMinAndMax),
+      normalize(ys, yMinAndMax),
+      epsilon
+    )
 
   const xsSimplified = normalize(xsSimplifiedNormalized, xMinAndMax, true)
   const ysSimplified = normalize(ysSimplifiedNormalized, yMinAndMax, true)
