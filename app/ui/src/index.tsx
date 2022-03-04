@@ -10,12 +10,15 @@ import './util/realtime/rotateLeafletMarker'
 import 'leaflet/dist/leaflet.css'
 // ! fixes leaflet marker
 import * as leaflet from 'leaflet'
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+import iconUrl from 'leaflet/dist/images/marker-icon.png'
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 
 delete (leaflet.Icon.Default.prototype as any)._getIconUrl
 leaflet.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+  iconRetinaUrl,
+  iconUrl,
+  shadowUrl,
 })
 
 ReactDOM.render(
