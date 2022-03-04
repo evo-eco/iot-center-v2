@@ -72,13 +72,22 @@ createDir('data', DIR_USER_DATA, () => {
 })
 
 function validateKey(key) {
-  if (key.includes('.') || !key.includes('/') || !key.includes('\\')) {
+  if (key.includes('.') || key.includes('/') || key.includes('\\')) {
     throw new Error('key cannot contain . / or \\')
   }
 }
 
+// implement simple caching to avoid frequest fs access
+let FILE_CACHE = {}
+fs.watch(DIR_DYNAMIC_DASHBOARDS, {}, () => (FILE_CACHE = {}))
+
 function listFiles(callback) {
+  if (FILE_CACHE.listFiles) {
+    callback(...FILE_CACHE.listFiles)
+    return
+  }
   fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
+    FILE_CACHE.listFiles = [e, files]
     callback(e, files)
   })
 }
@@ -86,12 +95,15 @@ function listFiles(callback) {
 function readFile(key, extension, callback) {
   try {
     validateKey(key)
-    fs.readFile(
-      path.join(DIR_DYNAMIC_DASHBOARDS, key + extension),
-      (e, data) => {
-        callback(e, data)
-      }
-    )
+    const file = key + extension
+    if (FILE_CACHE.readFile && FILE_CACHE.readFile[file]) {
+      callback(...FILE_CACHE.readFile[file])
+      return
+    }
+    fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), (e, data) => {
+      ;(FILE_CACHE.readFile || (FILE_CACHE.readFile = {}))[file] = [e, data]
+      callback(e, data ? data.toString('utf-8') : undefined)
+    })
   } catch (e) {
     callback(e)
   }
@@ -100,7 +112,8 @@ function readFile(key, extension, callback) {
 function deleteFile(key, extension, callback) {
   try {
     validateKey(key)
-    fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, key + extension), (e) => {
+    const file = key + extension
+    fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, file), (e) => {
       callback(e)
     })
   } catch (e) {
@@ -111,14 +124,10 @@ function deleteFile(key, extension, callback) {
 function writeFile(key, extension, body, callback) {
   try {
     validateKey(key)
-    fs.writeFile(
-      path.join(DIR_DYNAMIC_DASHBOARDS, key + extension),
-      body,
-      {},
-      (e) => {
-        callback(e)
-      }
-    )
+    const file = key + extension
+    fs.writeFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), body, {}, (e) => {
+      callback(e)
+    })
   } catch (e) {
     callback(e)
   }
@@ -159,15 +168,13 @@ router.get('/svgs', (_req, res) => {
 router.get('/dashboard/:key', (req, res) => {
   const key = req.params.key
 
-  readFile(key, '.json', (e, data) => {
+  readFile(key, '.json', (e, text) => {
     if (e) {
       console.error(e)
       res.status(404)
       res.send(`Dynamic dashboard not found!`)
       return
     }
-
-    const text = data.toString('utf-8')
     res.send(text)
   })
 })
@@ -190,15 +197,13 @@ router.delete('/dashboard/:key', (req, res) => {
 router.get('/svg/:key', (req, res) => {
   const key = req.params.key
 
-  readFile(key, '.svg', (e, data) => {
+  readFile(key, '.svg', (e, text) => {
     if (e) {
       console.error(e)
       res.status(404)
       res.send(`Svg not found!`)
       return
     }
-
-    const text = data.toString('utf-8')
     res.send(text)
   })
 })
