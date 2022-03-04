@@ -247,9 +247,12 @@ type RealtimeSubscription = {
   tags: string[]
 }
 
-const HOST = process.env.REACT_APP_SERVER_PORT
-  ? window.location.hostname + ':' + process.env.REACT_APP_SERVER_PORT
-  : window.location.host
+const HOST =
+  process.env.NODE_ENV === `development`
+    ? window.location.hostname +
+      ':' +
+      (process.env.REACT_APP_SERVER_PORT || '5000')
+    : window.location.host
 const WS_URL = `ws://${HOST}/mqtt`
 
 /** length of unix time with milliseconds precision */
