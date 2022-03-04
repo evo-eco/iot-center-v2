@@ -22,11 +22,9 @@ const router = express.Router()
 const DIR_USER_DATA = path.join(__dirname, '../../../data')
 const DIR_DYNAMIC_DASHBOARDS = path.join(DIR_USER_DATA, 'dynamic')
 
-/**
- * @param {string} logLabel
- * @param {string} path
- * @param {()=>void} [callback]
- */
+//////////////////////
+// Filesystem store //
+//////////////////////
 const createDir = (logLabel, path, callback) => {
   fs.stat(path, (e, stat) => {
     if (stat?.isDirectory?.()) {
@@ -78,7 +76,11 @@ createDir('data', DIR_USER_DATA, () => {
 //////////////////////
 router.get('/keys', (_req, res) => {
   fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
-    if (e) return
+    if (e) {
+      console.error(e)
+      res.sendStatus(500)
+      return
+    }
     const dashboards = files
       .filter((f) => f.endsWith('.json'))
       .map((d) => d.split('.').slice(0, -1).join('.'))
@@ -89,7 +91,11 @@ router.get('/keys', (_req, res) => {
 
 router.get('/svgs', (_req, res) => {
   fs.readdir(DIR_DYNAMIC_DASHBOARDS, (e, files) => {
-    if (e) return
+    if (e) {
+      console.error(e)
+      res.sendStatus(500)
+      return
+    }
     const svgs = files
       .filter((f) => f.endsWith('.svg'))
       .map((d) => d.split('.').slice(0, -1).join('.'))
@@ -127,8 +133,6 @@ router.delete('/dashboard/:key', (req, res) => {
     res.send('')
   })
 })
-
-// svg should contain xmlns="http://www.w3.org/2000/svg"
 
 router.get('/svg/:key', (req, res) => {
   const key = req.params.key
