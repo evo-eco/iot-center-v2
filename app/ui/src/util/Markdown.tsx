@@ -1,4 +1,4 @@
-import React, {FunctionComponent, ElementType} from 'react'
+import React, {FunctionComponent} from 'react'
 import ReactMarkdown from 'react-markdown'
 import {CodeComponent} from 'react-markdown/lib/ast-to-react'
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
@@ -6,7 +6,7 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 interface Props {
   source: string
 }
-const renderers: {[nodeType: string]: CodeComponent} = {
+const renderers: {code: CodeComponent} = {
   code: ({inline, children, className}) => {
     if (inline) {
       return <code>{children}</code>
