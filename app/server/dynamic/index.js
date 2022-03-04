@@ -101,7 +101,7 @@ router.get('/dashboard/:key', (req, res) => {
     if (e) {
       console.error(e)
       res.status(404)
-      res.send(`Dynamic dashboard ${key} not found!`)
+      res.send(`Dynamic dashboard not found!`)
       return
     }
 
@@ -120,7 +120,7 @@ router.delete('/dashboard/:key', (req, res) => {
     if (e) {
       console.error(e)
       res.status(500)
-      res.send(`Failed to delete ${key}!`)
+      res.send(`Failed to delete dashboard!`)
       return
     }
 
@@ -137,7 +137,7 @@ router.get('/svg/:key', (req, res) => {
     if (e) {
       console.error(e)
       res.status(404)
-      res.send(`Svg ${key} not found!`)
+      res.send(`Svg not found!`)
       return
     }
 
