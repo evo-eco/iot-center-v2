@@ -6,6 +6,7 @@
 const express = require('express')
 const path = require('path')
 const fs = require('fs')
+const sanitize = require('sanitize-filename')
 
 const router = express.Router()
 
@@ -71,12 +72,6 @@ createDir('data', DIR_USER_DATA, () => {
   })
 })
 
-function validateKey(key) {
-  if (key.includes('.') || key.includes('/') || key.includes('\\')) {
-    throw new Error('key cannot contain . / or \\')
-  }
-}
-
 // implement simple caching to avoid frequest fs access
 let FILE_CACHE = {}
 fs.watch(DIR_DYNAMIC_DASHBOARDS, {}, () => (FILE_CACHE = {}))
@@ -93,44 +88,25 @@ function listFiles(callback) {
 }
 
 function readFile(key, extension, callback) {
-  try {
-    validateKey(key)
-    const file = key + extension
-    if (FILE_CACHE.readFile && FILE_CACHE.readFile[file]) {
-      callback(...FILE_CACHE.readFile[file])
-      return
-    }
-    fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), (e, data) => {
-      ;(FILE_CACHE.readFile || (FILE_CACHE.readFile = {}))[file] = [e, data]
-      callback(e, data ? data.toString('utf-8') : undefined)
-    })
-  } catch (e) {
-    callback(e)
+  const file = sanitize(key + extension)
+  if (FILE_CACHE.readFile && FILE_CACHE.readFile[file]) {
+    callback(...FILE_CACHE.readFile[file])
+    return
   }
+  fs.readFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), (e, data) => {
+    ;(FILE_CACHE.readFile || (FILE_CACHE.readFile = {}))[file] = [e, data]
+    callback(e, data ? data.toString('utf-8') : undefined)
+  })
 }
 
 function deleteFile(key, extension, callback) {
-  try {
-    validateKey(key)
-    const file = key + extension
-    fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, file), (e) => {
-      callback(e)
-    })
-  } catch (e) {
-    callback(e)
-  }
+  const file = sanitize(key + extension)
+  fs.unlink(path.join(DIR_DYNAMIC_DASHBOARDS, file), callback)
 }
 
 function writeFile(key, extension, body, callback) {
-  try {
-    validateKey(key)
-    const file = key + extension
-    fs.writeFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), body, {}, (e) => {
-      callback(e)
-    })
-  } catch (e) {
-    callback(e)
-  }
+  const file = sanitize(key + extension)
+  fs.writeFile(path.join(DIR_DYNAMIC_DASHBOARDS, file), body, {}, callback)
 }
 
 //////////////////////
