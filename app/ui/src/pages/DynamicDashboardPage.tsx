@@ -16,7 +16,7 @@ import {
   fluxDuration,
   fluxExpression,
   InfluxDB,
-} from '@influxdata/influxdb-client'
+} from '@influxdata/influxdb-client-browser'
 import {GaugeOptions, LineOptions, Datum} from '@antv/g2plot'
 import {Table as GiraffeTable} from '@influxdata/giraffe'
 import {VIRTUAL_DEVICE} from '../App'

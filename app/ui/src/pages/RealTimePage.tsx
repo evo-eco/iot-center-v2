@@ -23,7 +23,7 @@ import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {IconRefresh, IconSettings, colorLink, colorPrimary} from '../styles'
 import {Table as GiraffeTable} from '@influxdata/giraffe'
-import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
+import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client-browser'
 import {queryTable} from '../util/queryTable'
 import {
   DiagramEntryPoint,

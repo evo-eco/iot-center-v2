@@ -13,7 +13,7 @@ import {
 import {Link} from 'react-router-dom'
 import {ColumnsType} from 'antd/lib/table'
 import {ExclamationCircleFilled} from '@ant-design/icons'
-import {flux, InfluxDB} from '@influxdata/influxdb-client'
+import {flux, InfluxDB} from '@influxdata/influxdb-client-browser'
 import {queryTable} from '../util/queryTable'
 import {timeFormatter} from '@influxdata/giraffe'
 import {VIRTUAL_DEVICE} from '../App'
