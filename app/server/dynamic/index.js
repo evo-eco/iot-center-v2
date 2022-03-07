@@ -28,20 +28,20 @@ const DIR_DYNAMIC_DASHBOARDS = path.join(DIR_USER_DATA, 'dynamic')
 //////////////////////
 const createDir = (logLabel, path, callback) => {
   fs.stat(path, (e, stat) => {
-    if (stat?.isDirectory?.()) {
+    if (stat && stat.isDirectory && stat.isDirectory()) {
       console.log(`${logLabel} directory already exists at:  ${path}`)
-      callback?.()
+      callback()
     } else
       fs.mkdir(path, {recursive: true}, (e) => {
         if (!e) {
-          console.log(`successfully created ${logLabel} directory at:  ${path}`)
-          callback?.()
-        } else {
-          console.error(
-            `failed co create ${logLabel} dir ${
-              e?.message ?? 'No error message'
-            }`
+          console.log(
+            'successfully created %s directory at:  %s',
+            logLabel,
+            path
           )
+          callback()
+        } else {
+          console.error('failed to create %s dir, %s', logLabel, e)
         }
       })
   })

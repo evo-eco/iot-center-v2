@@ -1,6 +1,10 @@
 {
   "plugins": ["prettier"],
-  "extends": ["node", "plugin:prettier/recommended"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:node/recommended",
+    "plugin:prettier/recommended"
+  ],
   "rules": {
     "no-console": "off",
     "import/no-commonjs": "off"

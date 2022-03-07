@@ -167,7 +167,7 @@ workflows:
   build:
     jobs:
       - app:
-          node_version: "12"
+          node_version: "16"
       - client-python
       - build-nightly-docker:
           filters:

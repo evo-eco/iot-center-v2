@@ -1,4 +1,4 @@
-const WebSocketClient = require('websocket').client
+const WebSocketClient = require('websocket').client // eslint-disable-line node/no-unpublished-require
 
 const client = new WebSocketClient()
 
