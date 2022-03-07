@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "cd ui && yarn build",
-    "build_docker": "cd ui && yarn install --production && yarn build",
+    "build_docker": "yarn install --frozen-lockfile && yarn --cwd ui build",
     "start": "cd server && yarn start",
     "test": "cd ui && yarn test && cd ../server && yarn test",
     "dev": "concurrently \"yarn --cwd server dev\" \"yarn --cwd ui start\"",
