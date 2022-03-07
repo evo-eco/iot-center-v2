@@ -101,7 +101,6 @@ jobs:
             docker run \
               --name iot-center \
               --detach \
-              --rm \
               --link influxdb_v2 \
               --env INFLUX_URL=http://influxdb_v2:8086 \
               --env INFLUX_TOKEN=my-token \
@@ -112,6 +111,9 @@ jobs:
               --rm \
               --link iot-center \
               inutano/wget:1.20.3-r1 wget -S --spider --tries=25 --retry-connrefused --waitretry=5 http://iot-center:5000/
+      - run:
+          name: Stop iot-center docker
+          command: docker stop iot-center || true
       - run:
           name: Print Docker output logs
           command: docker logs iot-center
