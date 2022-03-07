@@ -112,12 +112,15 @@ jobs:
               --link iot-center \
               inutano/wget:1.20.3-r1 wget -S --spider --tries=25 --retry-connrefused --waitretry=5 http://iot-center:5000/
       - run:
-          name: Stop iot-center docker
+          name: Stop iot-center container
           command: docker stop iot-center || true
       - run:
           name: Print Docker output logs
           command: docker logs iot-center
           when: on_fail
+      - run:
+          name: Remove iot-center container
+          command: docker rm iot-center || true
       - run:
           name: Save Docker image Cache
           command: |
