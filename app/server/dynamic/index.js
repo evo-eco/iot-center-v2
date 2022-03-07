@@ -46,6 +46,9 @@ const createDir = (logLabel, path, callback) => {
       })
   })
 }
+
+// implement simple caching to avoid frequest fs access
+let FILE_CACHE = {}
 createDir('data', DIR_USER_DATA, () => {
   createDir('dynamic', DIR_DYNAMIC_DASHBOARDS, () => {
     fs.copyFile(
@@ -69,12 +72,10 @@ createDir('data', DIR_USER_DATA, () => {
         if (e) console.error(e)
       }
     )
+    // watch for file changes to invalidate cache
+    fs.watch(DIR_DYNAMIC_DASHBOARDS, {}, () => (FILE_CACHE = {}))
   })
 })
-
-// implement simple caching to avoid frequest fs access
-let FILE_CACHE = {}
-fs.watch(DIR_DYNAMIC_DASHBOARDS, {}, () => (FILE_CACHE = {}))
 
 function listFiles(callback) {
   if (FILE_CACHE.listFiles) {
