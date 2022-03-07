@@ -111,7 +111,7 @@ jobs:
             docker run \
               --rm \
               --link iot-center \
-              inutano/wget:1.20.3-r1 wget -S --spider --tries=10 --retry-connrefused --waitretry=5 http://iot-center:5000/
+              inutano/wget:1.20.3-r1 wget -S --spider --tries=25 --retry-connrefused --waitretry=5 http://iot-center:5000/
       - run:
           name: Print Docker output logs
           command: docker logs iot-center
