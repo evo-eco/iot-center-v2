@@ -1,6 +1,6 @@
 const express = require('express')
 const env = require('../env')
-const {stringify} = require('yaml')
+const {stringify} = require('yaml') // eslint-disable-line node/no-unpublished-require
 const {
   getDevices,
   createDevice,
