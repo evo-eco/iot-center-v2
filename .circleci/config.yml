@@ -114,6 +114,7 @@ jobs:
       - run:
           name: Stop iot-center container
           command: docker stop iot-center || true
+          when: always
       - run:
           name: Print Docker output logs
           command: docker logs iot-center
@@ -121,6 +122,7 @@ jobs:
       - run:
           name: Remove iot-center container
           command: docker rm iot-center || true
+          when: always
       - run:
           name: Save Docker image Cache
           command: |
