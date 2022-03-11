@@ -17,16 +17,8 @@ const UI_BUILD_DIR = path.join(__dirname, '..', 'ui', 'dist')
 // terminate on DTRL+C or CTRL+D
 process.on('SIGINT', () => process.exit())
 process.on('SIGTERM', () => process.exit())
+console.log(require('./banner.json'))
 
-console.log(`
- _      _______    _______                                            ______  
-| |    (_______)  (_______)                _                         (_____ \\ 
-| |  ___   _       _        _____  ____  _| |_  _____   ____    _   _  ____) )
-| | / _ \\ | |     | |      | ___ ||  _ \\(_   _)| ___ | / ___)  | | | |/ ____/ 
-| || |_| || |     | |_____ | ____|| | | | | |_ | ____|| |       \\ V /| (_____ 
-|_| \\___/ |_|      \\______)|_____)|_| |_|  \\__)|_____)|_|        \\_/ |_______)
-                                                                              
-`)
 /**
  * @param {string} path
  */
