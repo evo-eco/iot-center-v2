@@ -10,8 +10,10 @@ REM   typically your email (can be changed)
 SET INFLUX_URL=
 SET INFLUX_TOKEN=
 SET INFLUX_ORG=
+
 REM SET INFLUX_BUCKET=iot_center
 REM SET INFLUX_BUCKET_AUTH=iot_center_devices
+
 REM SET MQTT_TOPIC=iot_center
 REM SET MQTT_URL=mqtt://127.0.0.1:1883
 REM SET SERVER_PORT=5000
