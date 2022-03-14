@@ -7,6 +7,9 @@ SET INFLUX_TOKEN=<generated token in the InfluxDB UI>
 REM SET INFLUX_ORG=iotCenter@influxdata.com
 SET INFLUX_ORG=<your email>
 
+REM SET INFLUX_BUCKET=iot_center
+REM SET INFLUX_BUCKET_AUTH=iot_center_devices
+
 REM SET MQTT_TOPIC=iot_center
 REM SET MQTT_URL=mqtt://localhost:1883
 REM SET SERVER_PORT=5000

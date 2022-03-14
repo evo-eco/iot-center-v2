@@ -8,6 +8,9 @@ export INFLUX_URL=
 export INFLUX_TOKEN=
 export INFLUX_ORG=
 
+# export INFLUX_BUCKET=iot_center
+# export INFLUX_BUCKET_AUTH=iot_center_devices
+
 # export MQTT_TOPIC=iot_center
 # export MQTT_URL=mqtt://localhost:1883
 # export SERVER_PORT=5000

@@ -5,9 +5,9 @@ const INFLUX_TOKEN = process.env.INFLUX_TOKEN || 'my-token'
 /** Organization within InfluxDB  */
 const INFLUX_ORG = process.env.INFLUX_ORG || 'my-org'
 /** InfluxDB bucket  */
-const INFLUX_BUCKET = 'iot_center'
+const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'iot_center'
 /** InfluxDB bucket that stores registered devices  */
-const INFLUX_BUCKET_DEVICES = 'iot_center_devices'
+const INFLUX_BUCKET_AUTH = process.env.INFLUX_BUCKET_AUTH || 'iot_center'
 
 /** optional Kafka Host */
 const KAFKA_HOST = process.env.KAFKA_HOST
@@ -40,6 +40,7 @@ function logEnvironment() {
   console.log(`INFLUX_TOKEN=${INFLUX_TOKEN ? '***' : ''}`)
   console.log(`INFLUX_ORG=${INFLUX_ORG}`)
   console.log(`INFLUX_BUCKET=${INFLUX_BUCKET}`)
+  console.log(`INFLUX_BUCKET_AUTH=${INFLUX_BUCKET_AUTH}`)
   if (KAFKA_HOST) {
     console.log(`KAFKA_HOST=${KAFKA_HOST}`)
   }
@@ -68,7 +69,7 @@ module.exports = {
   onboarding_password,
   configuration_refresh,
   INFLUX_BUCKET,
-  INFLUX_BUCKET_DEVICES,
+  INFLUX_BUCKET_AUTH,
   logEnvironment,
   KAFKA_HOST,
   KAFKA_TOPIC,
