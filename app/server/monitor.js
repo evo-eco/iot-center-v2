@@ -3,7 +3,7 @@ const {
   INFLUX_URL: url,
   INFLUX_TOKEN: token,
   INFLUX_ORG: org,
-  INFLUX_BUCKET: bucket,
+  INFLUX_BUCKET_AUTH: bucket,
 } = require('./env')
 const responseTime = require('response-time')
 
