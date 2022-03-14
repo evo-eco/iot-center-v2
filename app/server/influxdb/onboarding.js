@@ -7,7 +7,7 @@ const {
   onboarding_username,
   onboarding_password,
   INFLUX_BUCKET,
-  INFLUX_BUCKET_DEVICES,
+  INFLUX_BUCKET_AUTH,
 } = require('../env')
 const {getBucket, createBucket} = require('./buckets')
 
@@ -54,18 +54,19 @@ async function onboardInfluxDB() {
       }
     }
     await initializeBucket(INFLUX_BUCKET)
-    if (INFLUX_BUCKET_DEVICES === INFLUX_BUCKET) {
+    if (INFLUX_BUCKET_AUTH === INFLUX_BUCKET) {
       console.warn(
-        'WARN: INFLUX_BUCKET is the same as INFLUX_BUCKET_DEVICES. Each device can now'
+        'WARN: INFLUX_BUCKET is the same as INFLUX_BUCKET_AUTH. Each device can now'
       )
       console.warn(
         '      read authentication tokens of other devices. Setup different '
       )
       console.warn(
-        '      INFLUX_BUCKET and INFLUX_BUCKET_DEVICES environment variables.'
+        '      INFLUX_BUCKET and INFLUX_BUCKET_AUTH environment variables.'
       )
+    } else {
+      await initializeBucket(INFLUX_BUCKET_AUTH)
     }
-    await initializeBucket(INFLUX_BUCKET_DEVICES)
   } catch (error) {
     console.error(
       `Unable to determine whether InfluxDB at ${INFLUX_URL} is onboarded.`,

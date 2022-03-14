@@ -4,7 +4,7 @@ const {
   deleteAuthorization,
   createIoTAuthorization,
 } = require('./authorizations')
-const {INFLUX_ORG, INFLUX_BUCKET_DEVICES} = require('../env')
+const {INFLUX_ORG, INFLUX_BUCKET_AUTH} = require('../env')
 
 /**
  * Gets devices or a particular device when deviceId is specified. Tokens
@@ -19,7 +19,7 @@ async function getDevices(deviceId) {
     deviceId !== undefined
       ? flux` and r.deviceId == "${deviceId}"`
       : flux` and r._field != "token"`
-  const fluxQuery = flux`from(bucket:${INFLUX_BUCKET_DEVICES}) 
+  const fluxQuery = flux`from(bucket:${INFLUX_BUCKET_AUTH}) 
     |> range(start: 0) 
     |> filter(fn: (r) => r._measurement == "deviceauth"${deviceFilter})
     |> last()`
@@ -55,7 +55,7 @@ async function getDevices(deviceId) {
 async function createDevice(deviceId) {
   console.log(`createDevice: deviceId=${deviceId}`)
 
-  const writeApi = influxdb.getWriteApi(INFLUX_ORG, INFLUX_BUCKET_DEVICES)
+  const writeApi = influxdb.getWriteApi(INFLUX_ORG, INFLUX_BUCKET_AUTH)
   const createdAt = new Date().toISOString()
   const point = new Point('deviceauth')
     .tag('deviceId', deviceId)
@@ -94,12 +94,9 @@ async function removeDeviceAuthorization(deviceId, key) {
     }
   }
   // set empty key and token for the device
-  const writeApi = influxdb.getWriteApi(
-    INFLUX_ORG,
-    INFLUX_BUCKET_DEVICES,
-    'ms',
-    {batchSize: 2}
-  )
+  const writeApi = influxdb.getWriteApi(INFLUX_ORG, INFLUX_BUCKET_AUTH, 'ms', {
+    batchSize: 2,
+  })
   const point = new Point('deviceauth')
     .tag('deviceId', deviceId)
     .stringField('key', '')
@@ -117,12 +114,9 @@ async function createDeviceAuthorization(deviceId) {
   console.log(`createDeviceAuthorization: deviceId=${deviceId}`)
   const authorization = await createIoTAuthorization(deviceId)
   // set empty key and token for the device
-  const writeApi = influxdb.getWriteApi(
-    INFLUX_ORG,
-    INFLUX_BUCKET_DEVICES,
-    'ms',
-    {batchSize: 2}
-  )
+  const writeApi = influxdb.getWriteApi(INFLUX_ORG, INFLUX_BUCKET_AUTH, 'ms', {
+    batchSize: 2,
+  })
   const point = new Point('deviceauth')
     .tag('deviceId', deviceId)
     .stringField('key', authorization.id)
