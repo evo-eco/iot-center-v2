@@ -54,6 +54,17 @@ async function onboardInfluxDB() {
       }
     }
     await initializeBucket(INFLUX_BUCKET)
+    if (INFLUX_BUCKET_DEVICES === INFLUX_BUCKET) {
+      console.warn(
+        'WARN: INFLUX_BUCKET is the same as INFLUX_BUCKET_DEVICES. Each device can now'
+      )
+      console.warn(
+        '      read authentication tokens of other devices. Setup different '
+      )
+      console.warn(
+        '      INFLUX_BUCKET and INFLUX_BUCKET_DEVICES environment variables.'
+      )
+    }
     await initializeBucket(INFLUX_BUCKET_DEVICES)
   } catch (error) {
     console.error(
